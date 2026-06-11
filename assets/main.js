@@ -161,12 +161,14 @@ const byEid={};                                    // id ESPN -> jogo (preenchid
 
 let filter='all', query='', todayDI=-1;
 const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+/* nomes grandes -> versão curta só p/ exibição (busca/API seguem usando o nome completo) */
+const ABBR={'Rep. Dem. do Congo':'RD Congo','Bósnia e Herzegovina':'Bósnia','Estados Unidos':'EUA','República Tcheca':'Rep. Tcheca'};
 const team=(n,br,after)=>{
-  const name=br&&n==='Brasil'?`<span class="br-name">${esc(n)}</span>`:esc(n);
+  const disp=esc(ABBR[n]||n);
+  const name=br&&n==='Brasil'?`<span class="br-name">${disp}</span>`:disp;
   return after?`${name}${flag(n,true)}`:`${flag(n)}${name}`;
 };
 const pills=ch=>[...ch].sort((x,y)=>ORD[CAT[x]]-ORD[CAT[y]]).map(c=>{const k=CAT[c];return `<span class="pill p-${k}"><i class="${k}"></i>${esc(c)}</span>`;}).join('');
-const reds=(n,before)=>n>0?`<span class="redcard${before?' before':''}" title="Cartão vermelho" aria-label="Cartão vermelho"></span>`.repeat(n):'';
 
 function statusOf(m){
   const now=Date.now(), end=m.ts+135*60000;
@@ -191,7 +193,7 @@ function matchHTML(m){
   return `<div class="${cls}"${playable?` data-eid="${m.eid}"`:''} data-q="${m.q}">
     <div class="tcol">${top}${line}</div>
     <div class="body">
-      <div class="teams">${reds(m.reds&&m.reds.a,true)}${team(m.a,m.isBr)} ${mid} ${team(m.b,m.isBr,true)}${reds(m.reds&&m.reds.b)}</div>
+      <div class="teams">${team(m.a,m.isBr)} ${mid} ${team(m.b,m.isBr,true)}</div>
       <div class="meta"><span class="badge">Grupo ${m.g}</span><span class="badge">${m.r}ª rodada</span><span>${esc(m.v)}</span></div>
       <div class="chans">${pills(m.ch)}</div>
       ${toggle}
@@ -199,8 +201,8 @@ function matchHTML(m){
     ${statbox}
   </div>`;
 }
-/* encerrado: já tem placar buscado ou o horário de fim estimado já passou */
-const isPast=m=>!!m.score||Date.now()>m.ts+135*60000;
+/* encerrado: tem placar final, ou já passou do fim estimado e não está mais ao vivo */
+const isPast=m=>!!m.score||(!m.live&&Date.now()>m.ts+135*60000);
 function pass(m){
   if(query && !m.q.includes(query)) return false;
   if(filter==='br') return m.isBr;
@@ -220,8 +222,12 @@ function todayIndex(){
 }
 function renderToday(){
   const el=$('todayPanel'); if(!el) return;
-  const games=todayDI<0?[]:M.filter(m=>m.di===todayDI).sort((a,b)=>a.min-b.min);
-  if(!games.length){ el.innerHTML='<div class="today-empty">Nenhum jogo hoje</div>'; return; }
+  const games=todayDI<0?[]:M.filter(m=>m.di===todayDI&&pass(m)).sort((a,b)=>a.min-b.min);
+  if(!games.length){
+    // sem filtro/busca ativos mostra o aviso; com filtro ativo apenas esconde o painel
+    el.innerHTML=(filter==='all'&&!query)?'<div class="today-empty">Nenhum jogo hoje</div>':'';
+    return;
+  }
   el.innerHTML=`<div class="today-head"><span class="today-kicker">Jogos de hoje</span><span class="today-date">${DAYS[todayDI].dow} · ${DAYS[todayDI].n}</span></div>${games.map(matchHTML).join('')}`;
 }
 function render(){
@@ -235,8 +241,8 @@ function render(){
     html+=`<section class="day"><div class="day-head"><span class="dow">${DAYS[di].dow}</span><span class="dnum">${DAYS[di].n}</span></div>${games.map(matchHTML).join('')}</section>`;
   }
   $('list').innerHTML=html;
-  // no "Todos", soma também os jogos de hoje (que ficam só no painel do topo)
-  if(filter==='all' && todayDI>=0) total+=M.filter(m=>m.di===todayDI&&pass(m)).length;
+  // soma os jogos de hoje (que ficam no painel do topo) respeitando o filtro/busca
+  if(todayDI>=0) total+=M.filter(m=>m.di===todayDI&&pass(m)).length;
   const lbl=filter==='br'?'jogos do Brasil':filter==='open'?'jogos na TV aberta':filter==='caze'?'jogos só na Cazé TV':filter==='done'?'jogos encerrados':filter==='next'?'próximos jogos':'jogos';
   $('count').innerHTML=`<b>${total}</b> ${query?'resultado(s)':lbl}`;
   renderToday();
@@ -261,11 +267,6 @@ function applyEvents(events){
     if(!ph||!pa) return;
     const m=byPk[pairKey(ph,pa)]; if(!m) return;
     if(ev.id){ m.eid=String(ev.id); byEid[m.eid]=m; }
-    // cartões vermelhos por time (a partir dos lances)
-    const rc={};
-    (c.details||[]).forEach(x=>{ if(x.redCard&&x.team&&x.team.id!=null) rc[x.team.id]=(rc[x.team.id]||0)+1; });
-    const byPtRed={[ph]:rc[home.team&&home.team.id]||0,[pa]:rc[away.team&&away.team.id]||0};
-    m.reds={a:byPtRed[m.a]||0,b:byPtRed[m.b]||0};
     const st=(ev.status||c.status||{}), tp=st.type||{}, state=tp.state;   // pre | in | post
     const goals={[ph]:+home.score||0,[pa]:+away.score||0};
     if(state==='post'){ m.score=[goals[m.a],goals[m.b]]; m.live=null; fin++; }

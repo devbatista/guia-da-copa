@@ -152,7 +152,7 @@ header{position:relative}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 
 .body{min-width:0}
-.teams{font-family:"Saira Condensed";font-weight:700;font-size:21px;line-height:1.12;display:flex;flex-wrap:wrap;align-items:baseline;gap:0 9px}
+.teams{font-family:"Saira Condensed";font-weight:700;font-size:21px;line-height:1.12;display:flex;flex-wrap:nowrap;align-items:baseline;gap:0 9px}
 .teams .vs{color:var(--ink-dim);font-weight:600;font-size:15px}
 .br-name{color:var(--br-yellow)}
 [data-theme="light"] .br-name{color:#0f7a44}
@@ -160,9 +160,6 @@ header{position:relative}
 .flag-after{margin-right:0;margin-left:.36em}
 img.flag{width:1.15em;height:auto;border-radius:2px;box-shadow:0 0 0 1px rgba(0,0,0,.3)}
 .flag-emoji{font-size:1.05em}
-.redcard{display:inline-block;width:.62em;height:.86em;margin-left:.28em;border-radius:1.5px;
-  background:#e8112d;box-shadow:0 0 0 1px rgba(0,0,0,.3);vertical-align:-.06em}
-.redcard.before{margin-left:0;margin-right:.28em}   /* cartão do 1º time fica antes da bandeira */
 .meta{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin:7px 0 9px;
   font-family:"Saira Condensed";font-weight:600;font-size:12.5px;color:var(--ink-dim)}
 .badge{background:var(--board-2);border:1px solid var(--line);border-radius:5px;padding:2px 7px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink)}
@@ -187,7 +184,8 @@ footer .credit a:hover{text-decoration:underline}
 @keyframes spin{to{transform:rotate(360deg)}}
 
 @media (max-width:540px){
-  .match{grid-template-columns:64px 1fr;gap:0 12px;padding:12px}
-  .time,.score{font-size:21px}.teams{font-size:18px}h1{font-size:40px}
+  .match{grid-template-columns:58px 1fr;gap:0 11px;padding:12px}
+  .time,.score{font-size:20px}.teams{font-size:17px}h1{font-size:40px}
+  .teams img.flag{width:1em}      /* bandeira um pouco menor p/ caber tudo numa linha */
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto}}
