@@ -166,7 +166,7 @@ const pills=ch=>[...ch].sort((x,y)=>ORD[CAT[x]]-ORD[CAT[y]]).map(c=>{const k=CAT
 
 function statusOf(m){
   const now=Date.now(), end=m.ts+135*60000;
-  if(m.live)  return {score:[m.live.a,m.live.b],live:true,left:m.live.clock||"AO VIVO",cls:'live',label:'Ao vivo'};
+  if(m.live)  return {score:[m.live.a,m.live.b],live:true,half:m.live.half,left:m.live.half?'Intervalo':(m.live.clock||"AO VIVO"),cls:'live',label:'Ao vivo'};
   if(m.score) return {score:m.score,fin:true,left:m.t,cls:'done',label:'Encerrado'};
   if(now<m.ts) return {left:m.t,label:'BRT'};
   if(now<end)  return {left:m.t,cls:'live',label:'Em andamento'};
@@ -175,7 +175,7 @@ function statusOf(m){
 function matchHTML(m){
   const st=statusOf(m);
   const cls=['match',m.isBr?'is-br':'',(m.open&&!m.isBr)?'open':'',m.live?'islive':''].join(' ').replace(/\s+/g,' ').trim();
-  const top=`<div class="time${st.live?' islive':''}">${st.left}</div>`;
+  const top=`<div class="time${st.live?' islive':''}${st.half?' half':''}">${st.left}</div>`;
   const line=st.cls?`<span class="status ${st.cls}"><span class="d"></span>${st.label}</span>`:`<small>${st.label}</small>`;
   const mid=st.score
     ? `<span class="sc${st.live?' islive':''}">${st.score[0]}</span><span class="vs">×</span><span class="sc${st.live?' islive':''}">${st.score[1]}</span>`
@@ -261,7 +261,8 @@ async function fetchLive(silent=false){
       byKey[pairKey(ph,pa)]={
         goals:{[ph]:+home.score||0,[pa]:+away.score||0},
         state:tp.state,                       // pre | in | post
-        clock:st.displayClock||''
+        clock:st.displayClock||'',
+        half:tp.name==='STATUS_HALFTIME'||/halftime/i.test(tp.description||'')   // intervalo
       };
     });
     let live=0, fin=0;
@@ -269,7 +270,7 @@ async function fetchLive(silent=false){
       const r=byKey[m.pk]; if(!r) return;
       const ga=r.goals[m.a], gb=r.goals[m.b];
       if(r.state==='post'){ m.score=[ga,gb]; m.live=null; fin++; }
-      else if(r.state==='in'){ m.live={a:ga,b:gb,clock:r.clock}; m.score=null; live++; }
+      else if(r.state==='in'){ m.live={a:ga,b:gb,clock:r.clock,half:r.half}; m.score=null; live++; }
       else { m.live=null; }                   // pré-jogo
     });
     const hora=new Date().toLocaleTimeString('pt-BR',{timeZone:SP,hour:'2-digit',minute:'2-digit'});
@@ -312,5 +313,7 @@ $('themeToggle').addEventListener('click',()=>{
   try{localStorage.setItem('gdc-theme',next);}catch(e){}
 });
 
-render();                          // mostra a tabela na hora
-fetchLive().then(scheduleNext);    // busca placares e inicia o auto-refresh adaptativo
+function reveal(){ document.body.classList.add('ready'); }
+render();                          // monta a tabela (ainda escondida pelo overlay)
+fetchLive().then(scheduleNext).finally(reveal);   // revela após carregar os placares
+setTimeout(reveal, 6000);          // fallback: nunca deixa a tela travada no "carregando"
