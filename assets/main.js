@@ -166,7 +166,7 @@ const team=(n,br,after)=>{
   return after?`${name}${flag(n,true)}`:`${flag(n)}${name}`;
 };
 const pills=ch=>[...ch].sort((x,y)=>ORD[CAT[x]]-ORD[CAT[y]]).map(c=>{const k=CAT[c];return `<span class="pill p-${k}"><i class="${k}"></i>${esc(c)}</span>`;}).join('');
-const reds=n=>n>0?'<span class="redcard" title="Cartão vermelho" aria-label="Cartão vermelho"></span>'.repeat(n):'';
+const reds=(n,before)=>n>0?`<span class="redcard${before?' before':''}" title="Cartão vermelho" aria-label="Cartão vermelho"></span>`.repeat(n):'';
 
 function statusOf(m){
   const now=Date.now(), end=m.ts+135*60000;
@@ -191,7 +191,7 @@ function matchHTML(m){
   return `<div class="${cls}"${playable?` data-eid="${m.eid}"`:''} data-q="${m.q}">
     <div class="tcol">${top}${line}</div>
     <div class="body">
-      <div class="teams">${team(m.a,m.isBr)}${reds(m.reds&&m.reds.a)} ${mid} ${team(m.b,m.isBr,true)}${reds(m.reds&&m.reds.b)}</div>
+      <div class="teams">${reds(m.reds&&m.reds.a,true)}${team(m.a,m.isBr)} ${mid} ${team(m.b,m.isBr,true)}${reds(m.reds&&m.reds.b)}</div>
       <div class="meta"><span class="badge">Grupo ${m.g}</span><span class="badge">${m.r}ª rodada</span><span>${esc(m.v)}</span></div>
       <div class="chans">${pills(m.ch)}</div>
       ${toggle}
