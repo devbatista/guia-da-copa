@@ -123,10 +123,10 @@ function flagEmoji(code){
   return code.toUpperCase().replace(/./g,c=>String.fromCodePoint(127397+c.charCodeAt(0)));
 }
 /* <img> do CDN com emoji no alt; se a imagem falhar (offline/preview), o onerror troca pelo emoji */
-function flag(n){
+function flag(n,after){
   const code=ISO[n]; if(!code) return '';
-  const emo=flagEmoji(code);
-  return `<img class="flag" src="https://flagcdn.com/${code}.svg" alt="${emo}" width="20" loading="lazy" decoding="async" onerror="const s=document.createElement('span');s.className='flag flag-emoji';s.textContent=this.alt;this.replaceWith(s);">`;
+  const emo=flagEmoji(code), cls=after?'flag flag-after':'flag';
+  return `<img class="${cls}" src="https://flagcdn.com/${code}.svg" alt="${emo}" width="20" loading="lazy" decoding="async" onerror="const s=document.createElement('span');s.className=this.className+' flag-emoji';s.textContent=this.alt;this.replaceWith(s);">`;
 }
 
 /* enriquecer tabela */
@@ -144,7 +144,10 @@ M.forEach(m=>{
 
 let filter='all', query='';
 const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
-const team=(n,br)=>`${flag(n)}${br&&n==='Brasil'?`<span class="br-name">${esc(n)}</span>`:esc(n)}`;
+const team=(n,br,after)=>{
+  const name=br&&n==='Brasil'?`<span class="br-name">${esc(n)}</span>`:esc(n);
+  return after?`${name}${flag(n,true)}`:`${flag(n)}${name}`;
+};
 const pills=ch=>[...ch].sort((x,y)=>ORD[CAT[x]]-ORD[CAT[y]]).map(c=>{const k=CAT[c];return `<span class="pill p-${k}"><i class="${k}"></i>${esc(c)}</span>`;}).join('');
 
 function statusOf(m){
@@ -162,7 +165,7 @@ function matchHTML(m){
   return `<div class="${cls}" data-q="${m.q}">
     <div class="tcol">${top}${line}</div>
     <div class="body">
-      <div class="teams">${team(m.a,m.isBr)} <span class="vs">×</span> ${team(m.b,m.isBr)}</div>
+      <div class="teams">${team(m.a,m.isBr)} <span class="vs">×</span> ${team(m.b,m.isBr,true)}</div>
       <div class="meta"><span class="badge">Grupo ${m.g}</span><span class="badge">${m.r}ª rodada</span><span>${esc(m.v)}</span></div>
       <div class="chans">${pills(m.ch)}</div>
     </div>
