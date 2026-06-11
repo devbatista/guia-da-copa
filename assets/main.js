@@ -153,8 +153,11 @@ M.forEach(m=>{
   m.pk=pairKey(m.a,m.b);
   m.score=null;   // placar final [a,b]
   m.live=null;    // jogo em andamento {a,b,clock}
+  m.eid=null;     // id do evento na ESPN (p/ buscar estatísticas)
   m.q=(m.a+' '+m.b).toLowerCase();
 });
+const byPk={}; M.forEach(m=>{ byPk[m.pk]=m; });   // chave do par -> jogo
+const byEid={};                                    // id ESPN -> jogo (preenchido ao buscar)
 
 let filter='all', query='', todayDI=-1;
 const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
@@ -163,6 +166,7 @@ const team=(n,br,after)=>{
   return after?`${name}${flag(n,true)}`:`${flag(n)}${name}`;
 };
 const pills=ch=>[...ch].sort((x,y)=>ORD[CAT[x]]-ORD[CAT[y]]).map(c=>{const k=CAT[c];return `<span class="pill p-${k}"><i class="${k}"></i>${esc(c)}</span>`;}).join('');
+const reds=n=>n>0?'<span class="redcard" title="Cartão vermelho" aria-label="Cartão vermelho"></span>'.repeat(n):'';
 
 function statusOf(m){
   const now=Date.now(), end=m.ts+135*60000;
@@ -174,19 +178,25 @@ function statusOf(m){
 }
 function matchHTML(m){
   const st=statusOf(m);
-  const cls=['match',m.isBr?'is-br':'',(m.open&&!m.isBr)?'open':'',m.live?'islive':''].join(' ').replace(/\s+/g,' ').trim();
+  const playable=!!(m.live||m.score)&&!!m.eid;   // só ao vivo/encerrado tem estatísticas
+  const isOpen=playable&&openSet.has(m.eid);
+  const cls=['match',m.isBr?'is-br':'',(m.open&&!m.isBr)?'open':'',m.live?'islive':'',playable?'has-stats':'',isOpen?'expanded':''].join(' ').replace(/\s+/g,' ').trim();
   const top=`<div class="time${st.live?' islive':''}${st.half?' half':''}">${st.left}</div>`;
   const line=st.cls?`<span class="status ${st.cls}"><span class="d"></span>${st.label}</span>`:`<small>${st.label}</small>`;
   const mid=st.score
     ? `<span class="sc${st.live?' islive':''}">${st.score[0]}</span><span class="vs">×</span><span class="sc${st.live?' islive':''}">${st.score[1]}</span>`
     : `<span class="vs">×</span>`;
-  return `<div class="${cls}" data-q="${m.q}">
+  const toggle=playable?`<div class="stat-toggle">Estatísticas <span class="chev">▾</span></div>`:'';
+  const statbox=playable?`<div class="statbox" data-eid="${m.eid}"${isOpen?'':' hidden'}>${isOpen?(statCache[m.eid]||'<div class="stat-empty">Carregando estatísticas…</div>'):''}</div>`:'';
+  return `<div class="${cls}"${playable?` data-eid="${m.eid}"`:''} data-q="${m.q}">
     <div class="tcol">${top}${line}</div>
     <div class="body">
-      <div class="teams">${team(m.a,m.isBr)} ${mid} ${team(m.b,m.isBr,true)}</div>
+      <div class="teams">${team(m.a,m.isBr)}${reds(m.reds&&m.reds.a)} ${mid} ${team(m.b,m.isBr,true)}${reds(m.reds&&m.reds.b)}</div>
       <div class="meta"><span class="badge">Grupo ${m.g}</span><span class="badge">${m.r}ª rodada</span><span>${esc(m.v)}</span></div>
       <div class="chans">${pills(m.ch)}</div>
+      ${toggle}
     </div>
+    ${statbox}
   </div>`;
 }
 /* encerrado: já tem placar buscado ou o horário de fim estimado já passou */
@@ -239,6 +249,34 @@ function setSrc(state,text){
   if(state) el.classList.add(state);
   $('srcText').textContent=text;
 }
+/* casa os eventos da ESPN com a tabela: id, placar final e/ou jogo ao vivo */
+function applyEvents(events){
+  let live=0, fin=0;
+  (events||[]).forEach(ev=>{
+    const c=ev.competitions&&ev.competitions[0]; if(!c||!c.competitors||c.competitors.length<2) return;
+    const home=c.competitors.find(x=>x.homeAway==='home')||c.competitors[0];
+    const away=c.competitors.find(x=>x.homeAway==='away')||c.competitors[1];
+    const ph=toPT(home.team&&(home.team.displayName||home.team.name));
+    const pa=toPT(away.team&&(away.team.displayName||away.team.name));
+    if(!ph||!pa) return;
+    const m=byPk[pairKey(ph,pa)]; if(!m) return;
+    if(ev.id){ m.eid=String(ev.id); byEid[m.eid]=m; }
+    // cartões vermelhos por time (a partir dos lances)
+    const rc={};
+    (c.details||[]).forEach(x=>{ if(x.redCard&&x.team&&x.team.id!=null) rc[x.team.id]=(rc[x.team.id]||0)+1; });
+    const byPtRed={[ph]:rc[home.team&&home.team.id]||0,[pa]:rc[away.team&&away.team.id]||0};
+    m.reds={a:byPtRed[m.a]||0,b:byPtRed[m.b]||0};
+    const st=(ev.status||c.status||{}), tp=st.type||{}, state=tp.state;   // pre | in | post
+    const goals={[ph]:+home.score||0,[pa]:+away.score||0};
+    if(state==='post'){ m.score=[goals[m.a],goals[m.b]]; m.live=null; fin++; }
+    else if(state==='in'){
+      const half=tp.name==='STATUS_HALFTIME'||/halftime/i.test(tp.description||'');   // intervalo
+      m.live={a:goals[m.a],b:goals[m.b],clock:st.displayClock||'',half}; m.score=null; live++;
+    }
+    else { m.live=null; }
+  });
+  return {live,fin};
+}
 let liveBusy=false;
 async function fetchLive(silent=false){
   if(liveBusy) return;            // evita buscas sobrepostas (auto-refresh + clique)
@@ -248,34 +286,11 @@ async function fetchLive(silent=false){
   try{
     const res=await fetch(API,{cache:'no-store'});
     if(!res.ok) throw new Error('HTTP '+res.status);
-    const data=await res.json();
-    const byKey={};
-    (data.events||[]).forEach(ev=>{
-      const c=ev.competitions&&ev.competitions[0]; if(!c||!c.competitors||c.competitors.length<2) return;
-      const home=c.competitors.find(x=>x.homeAway==='home')||c.competitors[0];
-      const away=c.competitors.find(x=>x.homeAway==='away')||c.competitors[1];
-      const ph=toPT(home.team&&(home.team.displayName||home.team.name));
-      const pa=toPT(away.team&&(away.team.displayName||away.team.name));
-      if(!ph||!pa){ console.warn('Time não casou:',home.team&&home.team.displayName,'/',away.team&&away.team.displayName); return; }
-      const st=(ev.status||c.status||{}), tp=st.type||{};
-      byKey[pairKey(ph,pa)]={
-        goals:{[ph]:+home.score||0,[pa]:+away.score||0},
-        state:tp.state,                       // pre | in | post
-        clock:st.displayClock||'',
-        half:tp.name==='STATUS_HALFTIME'||/halftime/i.test(tp.description||'')   // intervalo
-      };
-    });
-    let live=0, fin=0;
-    M.forEach(m=>{
-      const r=byKey[m.pk]; if(!r) return;
-      const ga=r.goals[m.a], gb=r.goals[m.b];
-      if(r.state==='post'){ m.score=[ga,gb]; m.live=null; fin++; }
-      else if(r.state==='in'){ m.live={a:ga,b:gb,clock:r.clock,half:r.half}; m.score=null; live++; }
-      else { m.live=null; }                   // pré-jogo
-    });
+    const {live,fin}=applyEvents((await res.json()).events);
     const hora=new Date().toLocaleTimeString('pt-BR',{timeZone:SP,hour:'2-digit',minute:'2-digit'});
-    setSrc('ok', live?`${live} jogo(s) ao vivo · ${hora}`:(fin?`Atualizado · ${fin} resultado(s) · ${hora}`:`Conectado · ${hora}`));
+    setSrc('ok', live?`${live} jogo(s) ao vivo · ${hora}`:(fin?`Atualizado · ${hora}`:`Conectado · ${hora}`));
     render();
+    refreshOpenLive();             // atualiza painéis de stats abertos de jogos ao vivo
   }catch(e){
     setSrc('off','Sem conexão ao vivo — tabela embutida');
     console.warn('Live indisponível:',e.message);
@@ -284,6 +299,80 @@ async function fetchLive(silent=false){
     if(!silent){ btn.disabled=false; btn.classList.remove('spin'); }
   }
 }
+/* uma vez no carregamento: pega ids e placares finais de todos os dias do torneio */
+async function fetchSeason(){
+  try{
+    const res=await fetch(API+'?dates=20260611-20260719',{cache:'no-store'});
+    if(!res.ok) return;
+    applyEvents((await res.json()).events);
+    render();
+  }catch(e){ console.warn('Histórico indisponível:',e.message); }
+}
+
+/* ---------- estatísticas da partida (clique no card) ---------- */
+const SUMMARY="https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/summary?event=";
+const STAT_DEFS=[
+  {k:'possessionPct',label:'Posse de bola',pct:true},
+  {k:'totalShots',label:'Finalizações'},
+  {k:'shotsOnTarget',label:'No alvo'},
+  {k:'wonCorners',label:'Escanteios'},
+  {k:'foulsCommitted',label:'Faltas'},
+  {k:'yellowCards',label:'Cartões amarelos'},
+  {k:'redCards',label:'Cartões vermelhos',hideZero:true},   // só aparece se houver ao menos um
+];
+const statCache={};        // eid -> html (cache de jogo encerrado)
+const openSet=new Set();   // eids com painel aberto
+const statVal=(t,k)=>{ const s=(t.statistics||[]).find(x=>x.name===k); return s?parseFloat(s.displayValue):null; };
+function buildStats(m,box){
+  const teams=(box&&box.teams)||[];
+  let ta=null, tb=null;
+  teams.forEach(t=>{ const pt=toPT(t.team&&(t.team.displayName||t.team.name)); if(pt===m.a)ta=t; else if(pt===m.b)tb=t; });
+  if(!ta||!tb) return '<div class="stat-empty">Estatísticas indisponíveis para esta partida.</div>';
+  const hex=c=>c?'#'+String(c).replace('#',''):null;
+  const col=t=>hex(t.team&&t.team.color), alt=t=>hex(t.team&&t.team.alternateColor);
+  const rgb=h=>{const n=h.slice(1);return [parseInt(n.slice(0,2),16),parseInt(n.slice(2,4),16),parseInt(n.slice(4,6),16)];};
+  const dist=(x,y)=>{const a=rgb(x),b=rgb(y);return Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2]);};
+  const lum=h=>{const [r,g,b]=rgb(h);return (0.299*r+0.587*g+0.114*b)/255;};
+  const ol=h=>lum(h)>0.78?';box-shadow:inset 0 0 0 1px rgba(0,0,0,.28)':'';   // contorno p/ cor clara (ex.: branco no tema claro)
+  const ca=col(ta)||'#f6c544';
+  let cb=col(tb)||'#6db5ff';
+  // cores principais parecidas? usa a cor secundária do 2º time (se for mais distinta)
+  const altB=alt(tb);
+  if(altB&&dist(ca,cb)<70&&dist(ca,altB)>dist(ca,cb)) cb=altB;
+  let rows='';
+  STAT_DEFS.forEach(d=>{
+    let va=statVal(ta,d.k), vb=statVal(tb,d.k);
+    if(va==null&&vb==null) return;
+    va=va||0; vb=vb||0;
+    if(d.hideZero&&va+vb===0) return;   // ex.: cartões vermelhos só se houver
+    const sum=va+vb, share=sum?Math.round(va/sum*100):50, sfx=d.pct?'%':'';
+    rows+=`<div class="stat-row"><span class="stat-v sa">${va}${sfx}</span><div class="stat-mid"><span class="stat-label">${d.label}</span><div class="stat-bar" style="background:${cb}${ol(cb)}"><i style="width:${share}%;background:${ca}${ol(ca)}"></i></div></div><span class="stat-v sb">${vb}${sfx}</span></div>`;
+  });
+  return rows||'<div class="stat-empty">Sem estatísticas ainda.</div>';
+}
+const paintStats=(eid,html)=>document.querySelectorAll('.statbox[data-eid="'+eid+'"]').forEach(b=>b.innerHTML=html);
+async function loadStats(eid){
+  const m=byEid[eid]; if(!m) return;
+  if(statCache[eid]&&!m.live){ paintStats(eid,statCache[eid]); return; }   // encerrado: usa cache
+  paintStats(eid,'<div class="stat-empty">Carregando estatísticas…</div>');
+  try{
+    const data=await (await fetch(SUMMARY+eid,{cache:'no-store'})).json();
+    const html=buildStats(m,data.boxscore);
+    if(!m.live) statCache[eid]=html;
+    paintStats(eid,html);
+  }catch(e){ paintStats(eid,'<div class="stat-empty">Não foi possível carregar as estatísticas.</div>'); }
+}
+function refreshOpenLive(){ openSet.forEach(eid=>{ const m=byEid[eid]; if(m&&m.live) loadStats(eid); }); }
+function toggleStats(eid){
+  if(openSet.has(eid)) openSet.delete(eid); else openSet.add(eid);
+  render();
+  if(openSet.has(eid)) loadStats(eid);
+}
+document.addEventListener('click',e=>{
+  if(e.target.closest('.statbox')) return;        // cliques dentro do painel não fecham
+  const card=e.target.closest('.match.has-stats');
+  if(card&&card.dataset.eid) toggleStats(card.dataset.eid);
+});
 
 /* ---------- auto-refresh: 30s quando há jogo ao vivo, 5min caso contrário; pausa em aba oculta ---------- */
 function hasLive(){ return M.some(m=>m.live); }
@@ -316,4 +405,5 @@ $('themeToggle').addEventListener('click',()=>{
 function reveal(){ document.body.classList.add('ready'); }
 render();                          // monta a tabela (ainda escondida pelo overlay)
 fetchLive().then(scheduleNext).finally(reveal);   // revela após carregar os placares
+fetchSeason();                     // ids e resultados dos demais dias (p/ estatísticas)
 setTimeout(reveal, 6000);          // fallback: nunca deixa a tela travada no "carregando"

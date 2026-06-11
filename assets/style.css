@@ -115,6 +115,25 @@ header{position:relative}
 .match.open:not(.is-br){border-left-color:var(--amber)}
 .match.islive{border-left-color:var(--live);box-shadow:0 0 0 1px rgba(255,77,77,.25)}
 
+/* clique no card -> estatísticas da partida */
+.match.has-stats{cursor:pointer}
+.stat-toggle{margin-top:9px;font-family:"Saira Condensed";font-weight:700;font-size:11.5px;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--ink-dim);display:inline-flex;align-items:center;gap:5px;transition:color .15s}
+.match.has-stats:hover .stat-toggle{color:var(--amber-ink)}
+.stat-toggle .chev{display:inline-block;transition:transform .2s}
+.match.expanded .stat-toggle .chev{transform:rotate(180deg)}
+.statbox{grid-column:1/-1;margin-top:12px;padding-top:13px;border-top:1px solid var(--line)}
+.statbox[hidden]{display:none}
+.stat-empty{font-family:"Saira Condensed";font-weight:600;font-size:13px;color:var(--ink-dim);text-align:center;padding:6px 0}
+.stat-row{display:grid;grid-template-columns:48px 1fr 48px;align-items:center;gap:12px;margin:9px 0}
+.stat-v{font-family:"Saira Condensed";font-weight:800;font-size:15px;font-variant-numeric:tabular-nums}
+.stat-v.sa{color:var(--ink)}
+.stat-v.sb{color:var(--ink);text-align:right}
+.stat-label{display:block;text-align:center;font-family:"Saira Condensed";font-weight:600;font-size:11px;
+  letter-spacing:.06em;text-transform:uppercase;color:var(--ink-dim);margin-bottom:4px}
+.stat-bar{height:7px;border-radius:4px;background:var(--c-fechada);overflow:hidden}
+.stat-bar i{display:block;height:100%;background:var(--amber);border-right:2px solid var(--panel);transition:width .45s ease}
+
 .tcol{align-self:center}
 .time{font-family:"Saira Condensed";font-weight:800;font-size:25px;color:var(--amber-ink);line-height:1;
   font-variant-numeric:tabular-nums;text-shadow:0 0 14px rgba(246,197,68,.25)}
@@ -141,6 +160,8 @@ header{position:relative}
 .flag-after{margin-right:0;margin-left:.36em}
 img.flag{width:1.15em;height:auto;border-radius:2px;box-shadow:0 0 0 1px rgba(0,0,0,.3)}
 .flag-emoji{font-size:1.05em}
+.redcard{display:inline-block;width:.62em;height:.86em;margin-left:.28em;border-radius:1.5px;
+  background:#e8112d;box-shadow:0 0 0 1px rgba(0,0,0,.3);vertical-align:-.06em}
 .meta{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin:7px 0 9px;
   font-family:"Saira Condensed";font-weight:600;font-size:12.5px;color:var(--ink-dim)}
 .badge{background:var(--board-2);border:1px solid var(--line);border-radius:5px;padding:2px 7px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink)}
