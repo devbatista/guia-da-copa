@@ -109,6 +109,9 @@ img.flag{width:1.15em;height:auto;border-radius:2px;box-shadow:0 0 0 1px rgba(0,
   background:var(--board-2);color:var(--ink-dim);font-size:13.5px;line-height:1.6}
 .note b{color:var(--ink)}
 footer{margin-top:22px;color:#54708a;font-size:12px;font-family:"Saira Condensed";letter-spacing:.04em;text-align:center}
+footer .credit{margin-top:6px}
+footer .credit a{color:var(--amber);text-decoration:none;font-weight:700}
+footer .credit a:hover{text-decoration:underline}
 @keyframes spin{to{transform:rotate(360deg)}}
 
 @media (max-width:540px){
