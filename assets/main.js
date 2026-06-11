@@ -166,6 +166,7 @@ const team=(n,br,after)=>{
   return after?`${name}${flag(n,true)}`:`${flag(n)}${name}`;
 };
 const pills=ch=>[...ch].sort((x,y)=>ORD[CAT[x]]-ORD[CAT[y]]).map(c=>{const k=CAT[c];return `<span class="pill p-${k}"><i class="${k}"></i>${esc(c)}</span>`;}).join('');
+const reds=n=>n>0?'<span class="redcard" title="Cartão vermelho" aria-label="Cartão vermelho"></span>'.repeat(n):'';
 
 function statusOf(m){
   const now=Date.now(), end=m.ts+135*60000;
@@ -190,7 +191,7 @@ function matchHTML(m){
   return `<div class="${cls}"${playable?` data-eid="${m.eid}"`:''} data-q="${m.q}">
     <div class="tcol">${top}${line}</div>
     <div class="body">
-      <div class="teams">${team(m.a,m.isBr)} ${mid} ${team(m.b,m.isBr,true)}</div>
+      <div class="teams">${team(m.a,m.isBr)}${reds(m.reds&&m.reds.a)} ${mid} ${team(m.b,m.isBr,true)}${reds(m.reds&&m.reds.b)}</div>
       <div class="meta"><span class="badge">Grupo ${m.g}</span><span class="badge">${m.r}ª rodada</span><span>${esc(m.v)}</span></div>
       <div class="chans">${pills(m.ch)}</div>
       ${toggle}
@@ -260,6 +261,11 @@ function applyEvents(events){
     if(!ph||!pa) return;
     const m=byPk[pairKey(ph,pa)]; if(!m) return;
     if(ev.id){ m.eid=String(ev.id); byEid[m.eid]=m; }
+    // cartões vermelhos por time (a partir dos lances)
+    const rc={};
+    (c.details||[]).forEach(x=>{ if(x.redCard&&x.team&&x.team.id!=null) rc[x.team.id]=(rc[x.team.id]||0)+1; });
+    const byPtRed={[ph]:rc[home.team&&home.team.id]||0,[pa]:rc[away.team&&away.team.id]||0};
+    m.reds={a:byPtRed[m.a]||0,b:byPtRed[m.b]||0};
     const st=(ev.status||c.status||{}), tp=st.type||{}, state=tp.state;   // pre | in | post
     const goals={[ph]:+home.score||0,[pa]:+away.score||0};
     if(state==='post'){ m.score=[goals[m.a],goals[m.b]]; m.live=null; fin++; }
@@ -312,6 +318,7 @@ const STAT_DEFS=[
   {k:'wonCorners',label:'Escanteios'},
   {k:'foulsCommitted',label:'Faltas'},
   {k:'yellowCards',label:'Cartões amarelos'},
+  {k:'redCards',label:'Cartões vermelhos',hideZero:true},   // só aparece se houver ao menos um
 ];
 const statCache={};        // eid -> html (cache de jogo encerrado)
 const openSet=new Set();   // eids com painel aberto
@@ -321,13 +328,25 @@ function buildStats(m,box){
   let ta=null, tb=null;
   teams.forEach(t=>{ const pt=toPT(t.team&&(t.team.displayName||t.team.name)); if(pt===m.a)ta=t; else if(pt===m.b)tb=t; });
   if(!ta||!tb) return '<div class="stat-empty">Estatísticas indisponíveis para esta partida.</div>';
+  const hex=c=>c?'#'+String(c).replace('#',''):null;
+  const col=t=>hex(t.team&&t.team.color), alt=t=>hex(t.team&&t.team.alternateColor);
+  const rgb=h=>{const n=h.slice(1);return [parseInt(n.slice(0,2),16),parseInt(n.slice(2,4),16),parseInt(n.slice(4,6),16)];};
+  const dist=(x,y)=>{const a=rgb(x),b=rgb(y);return Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2]);};
+  const lum=h=>{const [r,g,b]=rgb(h);return (0.299*r+0.587*g+0.114*b)/255;};
+  const ol=h=>lum(h)>0.78?';box-shadow:inset 0 0 0 1px rgba(0,0,0,.28)':'';   // contorno p/ cor clara (ex.: branco no tema claro)
+  const ca=col(ta)||'#f6c544';
+  let cb=col(tb)||'#6db5ff';
+  // cores principais parecidas? usa a cor secundária do 2º time (se for mais distinta)
+  const altB=alt(tb);
+  if(altB&&dist(ca,cb)<70&&dist(ca,altB)>dist(ca,cb)) cb=altB;
   let rows='';
   STAT_DEFS.forEach(d=>{
     let va=statVal(ta,d.k), vb=statVal(tb,d.k);
     if(va==null&&vb==null) return;
     va=va||0; vb=vb||0;
+    if(d.hideZero&&va+vb===0) return;   // ex.: cartões vermelhos só se houver
     const sum=va+vb, share=sum?Math.round(va/sum*100):50, sfx=d.pct?'%':'';
-    rows+=`<div class="stat-row"><span class="stat-v sa">${va}${sfx}</span><div class="stat-mid"><span class="stat-label">${d.label}</span><div class="stat-bar"><i style="width:${share}%"></i></div></div><span class="stat-v sb">${vb}${sfx}</span></div>`;
+    rows+=`<div class="stat-row"><span class="stat-v sa">${va}${sfx}</span><div class="stat-mid"><span class="stat-label">${d.label}</span><div class="stat-bar" style="background:${cb}${ol(cb)}"><i style="width:${share}%;background:${ca}${ol(ca)}"></i></div></div><span class="stat-v sb">${vb}${sfx}</span></div>`;
   });
   return rows||'<div class="stat-empty">Sem estatísticas ainda.</div>';
 }
