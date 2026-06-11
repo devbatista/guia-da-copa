@@ -98,6 +98,19 @@ Qatar:"Catar","Saudi Arabia":"Arábia Saudita",Scotland:"Escócia",Senegal:"Sene
 "South Korea":"Coreia do Sul",Spain:"Espanha",Sweden:"Suécia",Switzerland:"Suíça",Tunisia:"Tunísia",Turkey:"Turquia",
 USA:"Estados Unidos",Uruguay:"Uruguai",Uzbekistan:"Uzbequistão"};
 
+/* apelidos extras p/ as grafias da ESPN que diferem do mapa acima */
+const ALIAS={"United States":"Estados Unidos",Czechia:"República Tcheca","Türkiye":"Turquia",Turkiye:"Turquia",
+"Korea Republic":"Coreia do Sul","Côte d'Ivoire":"Costa do Marfim","Cote d'Ivoire":"Costa do Marfim",
+"Congo DR":"Rep. Dem. do Congo","Bosnia and Herzegovina":"Bósnia e Herzegovina","IR Iran":"Irã"};
+const _norm=s=>s.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z]/g,'');
+const _ptNorm={}; Object.entries(PT).forEach(([en,pt])=>_ptNorm[_norm(en)]=pt); Object.values(PT).forEach(pt=>_ptNorm[_norm(pt)]=pt);
+function toPT(name){
+  if(!name) return null;
+  if(PT[name]) return PT[name];
+  if(ALIAS[name]) return ALIAS[name];
+  return _ptNorm[_norm(name)]||null;
+}
+
 const CAT={'Globo':'aberta','SBT':'aberta','SporTV':'fechada','Globoplay':'stream','ge tv':'youtube','N Sports':'youtube','Cazé TV':'caze'};
 const ORD={aberta:0,fechada:1,stream:2,youtube:3,caze:4};
 const SP='America/Sao_Paulo';
@@ -138,7 +151,8 @@ M.forEach(m=>{
   const day=String(11+m.di).padStart(2,'0'), hh=String(Math.floor(m.min/60)).padStart(2,'0'), mm=String(m.min%60).padStart(2,'0');
   m.ts=Date.parse(`2026-06-${day}T${hh}:${mm}:00-03:00`);
   m.pk=pairKey(m.a,m.b);
-  m.score=null;
+  m.score=null;   // placar final [a,b]
+  m.live=null;    // jogo em andamento {a,b,clock}
   m.q=(m.a+' '+m.b).toLowerCase();
 });
 
@@ -152,20 +166,24 @@ const pills=ch=>[...ch].sort((x,y)=>ORD[CAT[x]]-ORD[CAT[y]]).map(c=>{const k=CAT
 
 function statusOf(m){
   const now=Date.now(), end=m.ts+135*60000;
-  if(m.score) return {fin:true,txt:`${m.score[0]} × ${m.score[1]}`,cls:'done',label:'Encerrado'};
-  if(now<m.ts) return {txt:m.t,label:'BRT'};
-  if(now<end)  return {txt:m.t,cls:'live',label:'Em andamento'};
-  return {txt:m.t,label:'Aguardando'};
+  if(m.live)  return {score:[m.live.a,m.live.b],live:true,left:m.live.clock||"AO VIVO",cls:'live',label:'Ao vivo'};
+  if(m.score) return {score:m.score,fin:true,left:m.t,cls:'done',label:'Encerrado'};
+  if(now<m.ts) return {left:m.t,label:'BRT'};
+  if(now<end)  return {left:m.t,cls:'live',label:'Em andamento'};
+  return {left:m.t,label:'Aguardando'};
 }
 function matchHTML(m){
   const st=statusOf(m);
-  const cls=['match',m.isBr?'is-br':'',(m.open&&!m.isBr)?'open':''].join(' ').trim();
-  const top=st.fin?`<div class="score">${st.txt}</div>`:`<div class="time">${st.txt}</div>`;
+  const cls=['match',m.isBr?'is-br':'',(m.open&&!m.isBr)?'open':'',m.live?'islive':''].join(' ').replace(/\s+/g,' ').trim();
+  const top=`<div class="time${st.live?' islive':''}">${st.left}</div>`;
   const line=st.cls?`<span class="status ${st.cls}"><span class="d"></span>${st.label}</span>`:`<small>${st.label}</small>`;
+  const mid=st.score
+    ? `<span class="sc${st.live?' islive':''}">${st.score[0]}</span><span class="vs">×</span><span class="sc${st.live?' islive':''}">${st.score[1]}</span>`
+    : `<span class="vs">×</span>`;
   return `<div class="${cls}" data-q="${m.q}">
     <div class="tcol">${top}${line}</div>
     <div class="body">
-      <div class="teams">${team(m.a,m.isBr)} <span class="vs">×</span> ${team(m.b,m.isBr,true)}</div>
+      <div class="teams">${team(m.a,m.isBr)} ${mid} ${team(m.b,m.isBr,true)}</div>
       <div class="meta"><span class="badge">Grupo ${m.g}</span><span class="badge">${m.r}ª rodada</span><span>${esc(m.v)}</span></div>
       <div class="chans">${pills(m.ch)}</div>
     </div>
@@ -214,39 +232,69 @@ function render(){
   renderToday();
 }
 
-/* ---------- camada ao vivo (placares) ---------- */
-const API="https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json";
+/* ---------- camada ao vivo (placares via API pública da ESPN) ---------- */
+const API="https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard";
 function setSrc(state,text){
   const el=$('src'); el.classList.remove('ok','off');
   if(state) el.classList.add(state);
   $('srcText').textContent=text;
 }
-async function fetchLive(){
-  const btn=$('refresh'); btn.disabled=true; btn.classList.add('spin');
-  setSrc('', 'Buscando placares…');
+let liveBusy=false;
+async function fetchLive(silent=false){
+  if(liveBusy) return;            // evita buscas sobrepostas (auto-refresh + clique)
+  liveBusy=true;
+  const btn=$('refresh');
+  if(!silent){ btn.disabled=true; btn.classList.add('spin'); setSrc('', 'Buscando placares…'); }
   try{
-    const res=await fetch(API+'?t='+Date.now(),{cache:'no-store'});
+    const res=await fetch(API,{cache:'no-store'});
     if(!res.ok) throw new Error('HTTP '+res.status);
     const data=await res.json();
-    const scores={};
-    data.matches.forEach(x=>{
-      if(x.score&&x.score.ft){
-        const a=PT[x.team1]||x.team1, b=PT[x.team2]||x.team2;
-        scores[pairKey(a,b)]=x.score.ft;
-      }
+    const byKey={};
+    (data.events||[]).forEach(ev=>{
+      const c=ev.competitions&&ev.competitions[0]; if(!c||!c.competitors||c.competitors.length<2) return;
+      const home=c.competitors.find(x=>x.homeAway==='home')||c.competitors[0];
+      const away=c.competitors.find(x=>x.homeAway==='away')||c.competitors[1];
+      const ph=toPT(home.team&&(home.team.displayName||home.team.name));
+      const pa=toPT(away.team&&(away.team.displayName||away.team.name));
+      if(!ph||!pa){ console.warn('Time não casou:',home.team&&home.team.displayName,'/',away.team&&away.team.displayName); return; }
+      const st=(ev.status||c.status||{}), tp=st.type||{};
+      byKey[pairKey(ph,pa)]={
+        goals:{[ph]:+home.score||0,[pa]:+away.score||0},
+        state:tp.state,                       // pre | in | post
+        clock:st.displayClock||''
+      };
     });
-    let n=0;
-    M.forEach(m=>{ if(scores[m.pk]){ m.score=scores[m.pk]; n++; } });
+    let live=0, fin=0;
+    M.forEach(m=>{
+      const r=byKey[m.pk]; if(!r) return;
+      const ga=r.goals[m.a], gb=r.goals[m.b];
+      if(r.state==='post'){ m.score=[ga,gb]; m.live=null; fin++; }
+      else if(r.state==='in'){ m.live={a:ga,b:gb,clock:r.clock}; m.score=null; live++; }
+      else { m.live=null; }                   // pré-jogo
+    });
     const hora=new Date().toLocaleTimeString('pt-BR',{timeZone:SP,hour:'2-digit',minute:'2-digit'});
-    setSrc('ok', n?`Ao vivo · ${n} placar(es) · ${hora}`:`Conectado · sem placares ainda · ${hora}`);
+    setSrc('ok', live?`${live} jogo(s) ao vivo · ${hora}`:(fin?`Atualizado · ${fin} resultado(s) · ${hora}`:`Conectado · ${hora}`));
     render();
   }catch(e){
-    setSrc('off','Sem conexão ao vivo — tabela embutida (abra o arquivo no navegador)');
+    setSrc('off','Sem conexão ao vivo — tabela embutida');
     console.warn('Live indisponível:',e.message);
   }finally{
-    btn.disabled=false; btn.classList.remove('spin');
+    liveBusy=false;
+    if(!silent){ btn.disabled=false; btn.classList.remove('spin'); }
   }
 }
+
+/* ---------- auto-refresh: 30s quando há jogo ao vivo, 5min caso contrário; pausa em aba oculta ---------- */
+function hasLive(){ return M.some(m=>m.live); }
+let liveTimer=null;
+function scheduleNext(){
+  clearTimeout(liveTimer);
+  liveTimer=setTimeout(async()=>{
+    if(!document.hidden) await fetchLive(true);
+    scheduleNext();
+  }, hasLive()?30000:300000);
+}
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden) fetchLive(true); });
 
 document.querySelectorAll('.chip').forEach(b=>b.addEventListener('click',()=>{
   filter=b.dataset.f;
@@ -254,7 +302,15 @@ document.querySelectorAll('.chip').forEach(b=>b.addEventListener('click',()=>{
   render();
 }));
 $('q').addEventListener('input',e=>{query=e.target.value.trim().toLowerCase();render();});
-$('refresh').addEventListener('click',fetchLive);
+$('refresh').addEventListener('click',()=>fetchLive());
 
-render();              // mostra a tabela na hora
-fetchLive();           // tenta os placares por cima (silencioso se falhar)
+/* ---------- tema claro / escuro ---------- */
+$('themeToggle').addEventListener('click',()=>{
+  const next=document.documentElement.getAttribute('data-theme')==='light'?'dark':'light';
+  document.documentElement.setAttribute('data-theme',next);
+  document.querySelector('meta[name="theme-color"]').setAttribute('content',next==='light'?'#eef2f6':'#0c1620');
+  try{localStorage.setItem('gdc-theme',next);}catch(e){}
+});
+
+render();                          // mostra a tabela na hora
+fetchLive().then(scheduleNext);    // busca placares e inicia o auto-refresh adaptativo
