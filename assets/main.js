@@ -169,7 +169,7 @@ const pills=ch=>[...ch].sort((x,y)=>ORD[CAT[x]]-ORD[CAT[y]]).map(c=>{const k=CAT
 
 function statusOf(m){
   const now=Date.now(), end=m.ts+135*60000;
-  if(m.live)  return {score:[m.live.a,m.live.b],live:true,left:m.live.clock||"AO VIVO",cls:'live',label:'Ao vivo'};
+  if(m.live)  return {score:[m.live.a,m.live.b],live:true,half:m.live.half,left:m.live.half?'Intervalo':(m.live.clock||"AO VIVO"),cls:'live',label:'Ao vivo'};
   if(m.score) return {score:m.score,fin:true,left:m.t,cls:'done',label:'Encerrado'};
   if(now<m.ts) return {left:m.t,label:'BRT'};
   if(now<end)  return {left:m.t,cls:'live',label:'Em andamento'};
@@ -180,7 +180,7 @@ function matchHTML(m){
   const playable=!!(m.live||m.score)&&!!m.eid;   // só ao vivo/encerrado tem estatísticas
   const isOpen=playable&&openSet.has(m.eid);
   const cls=['match',m.isBr?'is-br':'',(m.open&&!m.isBr)?'open':'',m.live?'islive':'',playable?'has-stats':'',isOpen?'expanded':''].join(' ').replace(/\s+/g,' ').trim();
-  const top=`<div class="time${st.live?' islive':''}">${st.left}</div>`;
+  const top=`<div class="time${st.live?' islive':''}${st.half?' half':''}">${st.left}</div>`;
   const line=st.cls?`<span class="status ${st.cls}"><span class="d"></span>${st.label}</span>`:`<small>${st.label}</small>`;
   const mid=st.score
     ? `<span class="sc${st.live?' islive':''}">${st.score[0]}</span><span class="vs">×</span><span class="sc${st.live?' islive':''}">${st.score[1]}</span>`
@@ -260,10 +260,13 @@ function applyEvents(events){
     if(!ph||!pa) return;
     const m=byPk[pairKey(ph,pa)]; if(!m) return;
     if(ev.id){ m.eid=String(ev.id); byEid[m.eid]=m; }
-    const st=(ev.status||c.status||{}), state=st.type&&st.type.state;   // pre | in | post
+    const st=(ev.status||c.status||{}), tp=st.type||{}, state=tp.state;   // pre | in | post
     const goals={[ph]:+home.score||0,[pa]:+away.score||0};
     if(state==='post'){ m.score=[goals[m.a],goals[m.b]]; m.live=null; fin++; }
-    else if(state==='in'){ m.live={a:goals[m.a],b:goals[m.b],clock:st.displayClock||''}; m.score=null; live++; }
+    else if(state==='in'){
+      const half=tp.name==='STATUS_HALFTIME'||/halftime/i.test(tp.description||'');   // intervalo
+      m.live={a:goals[m.a],b:goals[m.b],clock:st.displayClock||'',half}; m.score=null; live++;
+    }
     else { m.live=null; }
   });
   return {live,fin};
@@ -380,6 +383,8 @@ $('themeToggle').addEventListener('click',()=>{
   try{localStorage.setItem('gdc-theme',next);}catch(e){}
 });
 
-render();                          // mostra a tabela na hora
-fetchLive().then(scheduleNext);    // placares de hoje + auto-refresh adaptativo
+function reveal(){ document.body.classList.add('ready'); }
+render();                          // monta a tabela (ainda escondida pelo overlay)
+fetchLive().then(scheduleNext).finally(reveal);   // revela após carregar os placares
 fetchSeason();                     // ids e resultados dos demais dias (p/ estatísticas)
+setTimeout(reveal, 6000);          // fallback: nunca deixa a tela travada no "carregando"
