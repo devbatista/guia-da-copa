@@ -56,6 +56,16 @@ h1 .yr{color:var(--amber)}
 .count{font-family:"Saira Condensed";font-weight:600;font-size:13px;color:var(--ink-dim);margin:10px 2px 0;letter-spacing:.04em}
 .count b{color:var(--amber)}
 
+.today-panel{margin-top:18px;padding:14px 16px 16px;border:1px solid var(--line);border-radius:var(--radius);
+  background:linear-gradient(180deg,var(--panel-hi),var(--board-2))}
+.today-head{display:flex;align-items:baseline;flex-wrap:wrap;gap:6px 12px;padding:0 2px 8px;border-bottom:1px solid var(--line)}
+.today-kicker{font-family:"Saira Condensed";font-weight:800;text-transform:uppercase;letter-spacing:.06em;
+  font-size:20px;color:var(--amber);display:inline-flex;align-items:center;gap:9px}
+.today-kicker::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--live);animation:blink 1.3s infinite}
+.today-date{font-family:"Saira Condensed";font-weight:600;color:var(--ink-dim);font-size:15px}
+.today-empty{font-family:"Saira Condensed";font-weight:700;color:var(--ink-dim);text-align:center;
+  padding:8px 4px;font-size:15px;letter-spacing:.02em}
+
 .day{margin-top:24px}
 .day-head{display:flex;align-items:baseline;gap:12px;padding:0 4px 10px;border-bottom:1px solid var(--line);margin-bottom:4px}
 .day-head .dow{font-family:"Saira Condensed";font-weight:800;text-transform:uppercase;font-size:22px}

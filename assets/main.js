@@ -142,7 +142,7 @@ M.forEach(m=>{
   m.q=(m.a+' '+m.b).toLowerCase();
 });
 
-let filter='all', query='';
+let filter='all', query='', todayDI=-1;
 const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
 const team=(n,br,after)=>{
   const name=br&&n==='Brasil'?`<span class="br-name">${esc(n)}</span>`:esc(n);
@@ -171,27 +171,47 @@ function matchHTML(m){
     </div>
   </div>`;
 }
+/* encerrado: já tem placar buscado ou o horário de fim estimado já passou */
+const isPast=m=>!!m.score||Date.now()>m.ts+135*60000;
 function pass(m){
   if(query && !m.q.includes(query)) return false;
   if(filter==='br') return m.isBr;
   if(filter==='open') return m.open;
   if(filter==='caze') return m.cazeOnly;
+  if(filter==='done') return isPast(m);
+  if(filter==='next') return !isPast(m);
   return true;
 }
-function render(){
+/* índice do dia de hoje na tabela (-1 se fora do período da Copa) */
+function todayIndex(){
   const today=new Date().toLocaleDateString('en-CA',{timeZone:SP});
+  for(let di=0;di<DAYS.length;di++){
+    if(`2026-06-${String(11+di).padStart(2,'0')}`===today) return di;
+  }
+  return -1;
+}
+function renderToday(){
+  const el=$('todayPanel'); if(!el) return;
+  const games=todayDI<0?[]:M.filter(m=>m.di===todayDI).sort((a,b)=>a.min-b.min);
+  if(!games.length){ el.innerHTML='<div class="today-empty">Nenhum jogo hoje</div>'; return; }
+  el.innerHTML=`<div class="today-head"><span class="today-kicker">Jogos de hoje</span><span class="today-date">${DAYS[todayDI].dow} · ${DAYS[todayDI].n}</span></div>${games.map(matchHTML).join('')}`;
+}
+function render(){
+  todayDI=todayIndex();
   let html='', total=0;
   for(let di=0;di<DAYS.length;di++){
+    if(di===todayDI) continue;   // jogos de hoje ficam só no painel do topo
     const games=M.filter(m=>m.di===di&&pass(m)).sort((a,b)=>a.min-b.min);
     if(!games.length) continue;
     total+=games.length;
-    const dayDate=`2026-06-${String(11+di).padStart(2,'0')}`;
-    const badge=dayDate===today?'<span class="today">Hoje</span>':'';
-    html+=`<section class="day"><div class="day-head"><span class="dow">${DAYS[di].dow}</span><span class="dnum">${DAYS[di].n}</span>${badge}</div>${games.map(matchHTML).join('')}</section>`;
+    html+=`<section class="day"><div class="day-head"><span class="dow">${DAYS[di].dow}</span><span class="dnum">${DAYS[di].n}</span></div>${games.map(matchHTML).join('')}</section>`;
   }
   $('list').innerHTML=html;
-  const lbl=filter==='br'?'jogos do Brasil':filter==='open'?'jogos na TV aberta':filter==='caze'?'jogos só na Cazé TV':'jogos';
+  // no "Todos", soma também os jogos de hoje (que ficam só no painel do topo)
+  if(filter==='all' && todayDI>=0) total+=M.filter(m=>m.di===todayDI&&pass(m)).length;
+  const lbl=filter==='br'?'jogos do Brasil':filter==='open'?'jogos na TV aberta':filter==='caze'?'jogos só na Cazé TV':filter==='done'?'jogos encerrados':filter==='next'?'próximos jogos':'jogos';
   $('count').innerHTML=`<b>${total}</b> ${query?'resultado(s)':lbl}`;
+  renderToday();
 }
 
 /* ---------- camada ao vivo (placares) ---------- */
