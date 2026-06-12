@@ -95,6 +95,10 @@ header{position:relative}
 .today-kicker{font-family:"Saira Condensed";font-weight:800;text-transform:uppercase;letter-spacing:.06em;
   font-size:20px;color:var(--amber-ink);display:inline-flex;align-items:center;gap:9px}
 .today-kicker::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--live);animation:blink 1.3s infinite}
+/* "Jogos em andamento": rótulo vermelho pulsando */
+.live-panel .today-kicker{color:var(--live)}
+/* "Jogos de hoje" (sem ao vivo): ponto âmbar estático, p/ não parecer ao vivo */
+.today-panel:not(.live-panel) .today-kicker::before{background:var(--amber-ink);animation:none}
 .today-date{font-family:"Saira Condensed";font-weight:600;color:var(--ink-dim);font-size:15px}
 .today-empty{font-family:"Saira Condensed";font-weight:700;color:var(--ink-dim);text-align:center;
   padding:8px 4px;font-size:15px;letter-spacing:.02em}

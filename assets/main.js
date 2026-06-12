@@ -226,6 +226,8 @@ function matchHTML(m){
 }
 /* encerrado: tem placar final, ou já passou do fim estimado e não está mais ao vivo */
 const isPast=m=>!!m.score||(!m.live&&Date.now()>m.ts+135*60000);
+/* em andamento agora: ao vivo confirmado pela ESPN, ou dentro da janela estimada (135min) sem placar final */
+const inProgress=m=>!!m.live||(Date.now()>=m.ts&&Date.now()<m.ts+135*60000&&!m.score);
 function pass(m){
   if(query && !m.q.includes(query)) return false;
   if(filter==='br') return m.isBr;
@@ -243,9 +245,18 @@ function todayIndex(){
   }
   return -1;
 }
+/* painel "Jogos em andamento": qualquer jogo ao vivo agora, de qualquer dia (some quando acaba) */
+function renderLive(){
+  const el=$('livePanel'); if(!el) return;
+  const games=M.filter(m=>inProgress(m)&&pass(m)).sort((a,b)=>a.ts-b.ts);
+  el.innerHTML=games.length
+    ? `<div class="today-head"><span class="today-kicker">Jogos em andamento</span></div>${games.map(matchHTML).join('')}`
+    : '';
+}
 function renderToday(){
   const el=$('todayPanel'); if(!el) return;
-  const games=todayDI<0?[]:M.filter(m=>m.di===todayDI&&pass(m)).sort((a,b)=>a.min-b.min);
+  // jogos de hoje que NÃO estão ao vivo (os ao vivo ficam no painel de andamento)
+  const games=todayDI<0?[]:M.filter(m=>m.di===todayDI&&!inProgress(m)&&pass(m)).sort((a,b)=>a.min-b.min);
   if(!games.length){
     // sem filtro/busca ativos mostra o aviso; com filtro ativo apenas esconde o painel
     el.innerHTML=(filter==='all'&&!query)?'<div class="today-empty">Nenhum jogo hoje</div>':'';
@@ -258,16 +269,19 @@ function render(){
   let html='', total=0;
   for(let di=0;di<DAYS.length;di++){
     if(di===todayDI) continue;   // jogos de hoje ficam só no painel do topo
-    const games=M.filter(m=>m.di===di&&pass(m)).sort((a,b)=>a.min-b.min);
+    // jogos em andamento saem da lista por dia (vão pro painel de andamento)
+    const games=M.filter(m=>m.di===di&&!inProgress(m)&&pass(m)).sort((a,b)=>a.min-b.min);
     if(!games.length) continue;
     total+=games.length;
     html+=`<section class="day"><div class="day-head"><span class="dow">${DAYS[di].dow}</span><span class="dnum">${DAYS[di].n}</span></div>${games.map(matchHTML).join('')}</section>`;
   }
   $('list').innerHTML=html;
-  // soma os jogos de hoje (que ficam no painel do topo) respeitando o filtro/busca
-  if(todayDI>=0) total+=M.filter(m=>m.di===todayDI&&pass(m)).length;
+  // soma os jogos dos painéis do topo (em andamento + os de hoje fora de andamento) respeitando o filtro/busca
+  total+=M.filter(m=>inProgress(m)&&pass(m)).length;
+  if(todayDI>=0) total+=M.filter(m=>m.di===todayDI&&!inProgress(m)&&pass(m)).length;
   const lbl=filter==='br'?'jogos do Brasil':filter==='open'?'jogos na TV aberta':filter==='caze'?'jogos só na Cazé TV':filter==='done'?'jogos encerrados':filter==='next'?'próximos jogos':'jogos';
   $('count').innerHTML=`<b>${total}</b> ${query?'resultado(s)':lbl}`;
+  renderLive();
   renderToday();
 }
 
