@@ -1,0 +1,11 @@
+# Gerados pelo cron no servidor (não versionar)
+jogos.json
+gerar-jogos.log
+*.tmp
+
+# Sistema operacional / editor
+.DS_Store
+Thumbs.db
+
+# Claude Code (local)
+.claude/

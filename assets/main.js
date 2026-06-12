@@ -165,6 +165,22 @@ function applyChannels(data){
     m.cazeOnly=ch.length===1;
   });
 }
+/* canais dinâmicos gerados pelo cron PHP (jogos.json) — sobrescrevem a grade estática quando disponível */
+async function loadJogosJson(){
+  try{
+    const res=await fetch('jogos.json',{cache:'no-store'});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const data=await res.json();
+    let n=0;
+    (data.canais||[]).forEach(g=>{
+      const ch=g.channels;
+      if(!Array.isArray(ch)||!ch.length) return;
+      const m=byPk[pairKey(g.home,g.away)]; if(!m) return;
+      m.ch=ch; m.open=ch.some(c=>c==='Globo'||c==='SBT'); m.cazeOnly=ch.length===1; n++;
+    });
+    if(n) render();
+  }catch(e){ console.warn('Canais dinâmicos (jogos.json) indisponíveis, usando a grade estática:',e.message); }
+}
 
 let filter='all', query='', todayDI=-1;
 const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
@@ -411,8 +427,9 @@ $('themeToggle').addEventListener('click',()=>{
 });
 
 function reveal(){ document.body.classList.add('ready'); }
-applyChannels(typeof TRANSMISSAO!=='undefined'?TRANSMISSAO:null);   // grade de canais (transmissao.js)
+applyChannels(typeof TRANSMISSAO!=='undefined'?TRANSMISSAO:null);   // grade estática (transmissao.js) — base offline
 render();                          // monta a tabela (ainda escondida pelo overlay)
+loadJogosJson();                   // grade dinâmica do cron (jogos.json) sobrescreve quando disponível
 fetchLive().then(scheduleNext).finally(reveal);   // revela após carregar os placares
 fetchSeason();                     // ids e resultados dos demais dias (p/ estatísticas)
 setTimeout(reveal, 6000);          // fallback: nunca deixa a tela travada no "carregando"

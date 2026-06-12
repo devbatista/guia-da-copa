@@ -25,3 +25,7 @@ jobs:
             **/.git*/**
             **/.github/**
             **/README.md
+            **/.claude/**
+            jogos.json
+            gerar-jogos.log
+            **/*.tmp
