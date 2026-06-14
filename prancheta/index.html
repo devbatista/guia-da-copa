@@ -251,6 +251,25 @@ button.verde{background:var(--green);border-color:var(--green);color:#03150d}
 .jogo .pen-gols .pen-miss{color:var(--live);opacity:.8}
 .jogo .pen-gols .pen-gol i{font-style:normal;letter-spacing:.06em;text-transform:uppercase;color:var(--amber-ink);opacity:.9;font-size:10px}
 .jogo .pen-gols .pen-miss i{font-style:normal;letter-spacing:.06em;text-transform:uppercase;color:var(--live);opacity:.85;font-size:10px}
+
+/* ---------- Classificação do grupo (fim da fase de grupos) ---------- */
+.grupo-tit{font-family:"Saira Condensed";font-weight:700;font-size:12px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--amber-ink);margin-bottom:10px;text-align:center}
+table.classif{width:100%;border-collapse:collapse}
+.classif th{font-family:"Saira Condensed";font-weight:700;font-size:10px;letter-spacing:.04em;text-transform:uppercase;
+  color:var(--ink-dim);text-align:center;padding:5px 2px;border-bottom:1px solid var(--line)}
+.classif th.th-time{text-align:left}
+.classif td{font-family:"Saira";font-size:13px;text-align:center;padding:8px 2px;border-bottom:1px solid var(--line);
+  font-variant-numeric:tabular-nums;color:var(--ink-dim)}
+.classif tbody tr:last-child td{border-bottom:0}
+.classif td.pos{width:20px}
+.classif td.time{text-align:left;font-family:"Saira Condensed";font-weight:700;font-size:14px;text-transform:uppercase;
+  color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px}
+.classif td.time .fl{margin-right:6px}
+.classif td.pts{font-family:"Saira Condensed";font-weight:800;font-size:16px;color:var(--amber-ink)}
+.classif tr.eu td{background:rgba(246,197,68,.09)}
+.classif tr.eu td.time{color:var(--amber-ink)}
+.grupo-nota{font-size:12px;color:var(--ink-dim);text-align:center;margin-top:11px;opacity:.85}
 .jogo .pen{font-size:11px;color:var(--ink-dim);font-family:"Saira"}
 
 /* ---------- Revelação ao vivo dos jogos (suspense) ---------- */
@@ -796,23 +815,30 @@ function sortearAdversario(etapa){
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
-// Gera um placar de disputa de pênaltis realista (5 cobranças + morte súbita).
-// Retorna {max, min} — só a roupagem; quem vence já foi decidido pela força.
-// Gera a sequência de cobranças de uma disputa de pênaltis (5 + morte súbita).
-// T e A são listas de booleans (true = convertido) na ordem das cobranças;
-// st/sa são os totais convertidos. É só a roupagem — quem vence já foi
+// Gera a sequência de cobranças de uma disputa de pênaltis com regras de verdade:
+// 5 cobranças alternadas (T, A, T, A…) com PARADA ANTECIPADA — encerra assim que
+// um time não pode mais ser alcançado mesmo convertendo as restantes — e morte
+// súbita em caso de empate. T e A são listas de booleans (true = convertido) na
+// ordem das cobranças; st/sa são os totais. É só a roupagem — quem vence já foi
 // decidido pela força (a sequência é espelhada para bater com o vencedor).
 function sequenciaPenaltis(){
   const p = 0.74;                 // ~74% de conversão por cobrança
   const T = [], A = [];
-  let st = 0, sa = 0;
-  for(let i = 0; i < 5; i++){
-    const ct = Math.random() < p; T.push(ct); if(ct) st++;
-    const ca = Math.random() < p; A.push(ca); if(ca) sa++;
+  let st = 0, sa = 0, tRem = 5, aRem = 5;
+
+  const baterT = () => { const m = Math.random() < p; T.push(m); if(m) st++; tRem--; };
+  const baterA = () => { const m = Math.random() < p; A.push(m); if(m) sa++; aRem--; };
+  // decidido: o time atrás não alcança nem convertendo todas as cobranças que faltam
+  const decidido = () => st > sa + aRem || sa > st + tRem;
+
+  // fase regulamentar: alterna T,A começando por T; para na hora que decide
+  while((tRem > 0 || aRem > 0) && !decidido()){
+    if(tRem >= aRem) baterT(); else baterA();
   }
-  while(st === sa){               // morte súbita: uma cobrança de cada por rodada
-    const ct = Math.random() < p; T.push(ct); if(ct) st++;
-    const ca = Math.random() < p; A.push(ca); if(ca) sa++;
+  // morte súbita: uma cobrança de cada por rodada até alguém abrir vantagem
+  while(st === sa){
+    baterT();
+    baterA();
   }
   return { T, A, st, sa };
 }
@@ -875,7 +901,34 @@ function simularCopa(){
     }
   }
   if(!eliminadoEm && posicao === null) posicao = 1;   // venceu a final → campeão
-  return { forca, jogos, venceuTudo, eliminadoEm, posicao };
+  const grupo = montarTabelaGrupo(jogos.slice(0, 3));  // classificação da fase de grupos
+  return { forca, jogos, venceuTudo, eliminadoEm, posicao, grupo };
+}
+
+// Monta a classificação do grupo: você + os 3 adversários da 1ª fase.
+// Seus 3 resultados já estão simulados; os 3 confrontos entre os adversários
+// são simulados aqui (sem mata-mata) para fechar o returno completo do grupo.
+function montarTabelaGrupo(jogosGrupo){
+  const linha = (id, nome, fl) => ({ id, nome, fl, j:0, v:0, e:0, d:0, gp:0, gc:0, pts:0 });
+  const tab = { EU: linha("EU", nomeDoTime(), "⭐") };
+  jogosGrupo.forEach((j, i) => { tab[i] = linha(i, j.adversario.n, j.adversario.fl); });
+
+  const registrar = (A, B, ga, gb) => {
+    const a = tab[A], b = tab[B];
+    a.j++; b.j++; a.gp += ga; a.gc += gb; b.gp += gb; b.gc += ga;
+    if(ga > gb){ a.v++; b.d++; a.pts += 3; }
+    else if(gb > ga){ b.v++; a.d++; b.pts += 3; }
+    else { a.e++; b.e++; a.pts++; b.pts++; }
+  };
+
+  jogosGrupo.forEach((j, i) => registrar("EU", i, j.gt, j.ga));   // seus 3 jogos
+  [[0,1],[0,2],[1,2]].forEach(([x,y]) => {                        // adversários entre si
+    const r = simularJogo(jogosGrupo[x].advForca, jogosGrupo[y].advForca, MENTALIDADES["Equilibrada"], false);
+    registrar(x, y, r.gt, r.ga);
+  });
+
+  return Object.values(tab).sort((p, q) =>
+    q.pts - p.pts || (q.gp-q.gc) - (p.gp-p.gc) || q.gp - p.gp || p.nome.localeCompare(q.nome));
 }
 
 
@@ -1273,6 +1326,14 @@ async function revelarCampanha(r){
     await animarJogo(div, j, mataMata);   // roda o cronômetro até o apito
     revelarPlacar(div, j);
     await sleep(450 * fatorVel());
+
+    if(i === 2 && r.grupo){               // fim da fase de grupos → classificação
+      head.innerHTML = "Fase de grupos encerrada · classificação";
+      const tabEl = renderGrupo(r.grupo);
+      jc.appendChild(tabEl);
+      rolarPara(tabEl, "center");
+      await sleep(1300 * fatorVel());
+    }
   }
 
   head.classList.add("hidden");
@@ -1285,6 +1346,29 @@ async function revelarCampanha(r){
     await sleep(550);
     festejarCampeao(r.venceuTudo);
   }
+}
+
+/* ----- Tabela de classificação do grupo ----- */
+function renderGrupo(linhas){
+  const card = document.createElement("div");
+  card.className = "card grupo-tab entrando";
+  const corpo = linhas.map((t, i) => {
+    const sg = t.gp - t.gc;
+    const sgTxt = (sg > 0 ? "+" : "") + sg;
+    const eu = t.id === "EU";
+    return `<tr class="${eu ? "eu" : ""}">` +
+      `<td class="pos">${i + 1}</td>` +
+      `<td class="time"><span class="fl">${eu ? "⭐" : t.fl}</span>${escapar(t.nome)}</td>` +
+      `<td>${t.j}</td><td>${t.v}</td><td>${t.e}</td><td>${t.d}</td>` +
+      `<td>${sgTxt}</td><td class="pts">${t.pts}</td></tr>`;
+  }).join("");
+  card.innerHTML =
+    `<div class="grupo-tit">Classificação do grupo</div>` +
+    `<table class="classif"><thead><tr>` +
+      `<th>#</th><th class="th-time">Time</th><th>J</th><th>V</th><th>E</th><th>D</th><th>SG</th><th>Pts</th>` +
+    `</tr></thead><tbody>${corpo}</tbody></table>` +
+    `<div class="grupo-nota">Você avança para o mata-mata.</div>`;
+  return card;
 }
 
 /* ----- Popup festivo de CAMPEÃO ----- */
