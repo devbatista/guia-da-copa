@@ -49,6 +49,11 @@ h1 .yr{color:var(--amber-ink)}
 .refresh:disabled{opacity:.5;cursor:default}
 .refresh svg{width:13px;height:13px}
 .refresh.spin svg{animation:spin 1s linear infinite}
+.prancheta-link{font-family:"Saira Condensed";font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.04em;
+  text-decoration:none;cursor:pointer;color:#1a1206;background:var(--amber);border:1px solid var(--amber);border-radius:999px;
+  padding:7px 14px;display:inline-flex;align-items:center;gap:7px;transition:.15s;margin-left:auto}
+.prancheta-link:hover{filter:brightness(1.06)}
+.prancheta-link svg{width:14px;height:15px}
 .theme-toggle{position:absolute;top:30px;right:0;z-index:2;cursor:pointer;
   font-family:"Saira Condensed";font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.04em;
   color:var(--ink);background:var(--board-2);border:1px solid var(--line);border-radius:999px;

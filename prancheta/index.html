@@ -64,6 +64,14 @@ header .sub{color:var(--ink-dim);font-size:15px;margin-top:8px;max-width:54ch}
 [data-theme="light"] .theme-toggle .ic-sun{display:none}
 [data-theme="light"] .theme-toggle .ic-moon{display:inline}
 
+/* Voltar ao Guia da Copa (mesma pílula do tema, sem amarelo) */
+.voltar-guia{display:inline-flex;align-items:center;gap:8px;margin-bottom:16px;
+  font-family:"Saira Condensed";font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.04em;
+  text-decoration:none;color:var(--ink);background:var(--board-2);border:1px solid var(--line);border-radius:999px;
+  padding:8px 14px;transition:.15s}
+.voltar-guia:hover{border-color:var(--line-hi);color:var(--amber-ink)}
+.voltar-guia svg{width:15px;height:15px;flex:none}
+
 /* ---------- Cartões / painéis (como .today-panel do guia) ---------- */
 .card{background:linear-gradient(180deg,var(--panel-hi),var(--board-2));
   border:1px solid var(--line);border-radius:var(--radius);padding:18px}
@@ -94,6 +102,12 @@ button.verde{background:var(--green);border-color:var(--green);color:#03150d}
   letter-spacing:0;text-transform:none;margin-top:1px}
 .opcoes .opt.sel{background:var(--amber);color:#1a1206;border-color:var(--amber)}
 .opcoes .opt.sel small{opacity:.8}
+
+/* Campo de texto (nome do time) */
+.campo-texto{width:100%;font-family:"Saira",sans-serif;font-size:16px;color:var(--ink);
+  background:var(--board-2);border:1px solid var(--line);border-radius:10px;padding:11px 14px;transition:.15s}
+.campo-texto::placeholder{color:var(--ink-dim);opacity:.8}
+.campo-texto:focus{outline:none;border-color:var(--amber);background:var(--panel-hi)}
 
 /* ---------- DRAFT: topo (rodada / overall / rerolls) ---------- */
 .hud{display:flex;align-items:stretch;gap:14px;margin-bottom:16px;flex-wrap:wrap}
@@ -188,6 +202,16 @@ button.verde{background:var(--green);border-color:var(--green);color:#03150d}
 .jogo .gols .col-t .gol-item{color:var(--ink)}
 .jogo .gol-item i{font-style:normal;font-variant-numeric:tabular-nums;opacity:.65;font-size:11px}
 @keyframes golItemIn{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:none}}
+/* Disputa de pênaltis: separador, rótulo e súmula marcou/perdeu */
+.jogo .pen-sep{grid-column:1/-1;border:0;border-top:1px dashed var(--line-hi);margin:12px 0 0;opacity:.7}
+.jogo .pen-lbl{grid-column:1/-1;font-family:"Saira Condensed";font-weight:700;font-size:10.5px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--amber-ink);text-align:center;margin-top:9px}
+.jogo .pen-gols{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:1px 14px;margin-top:8px}
+.jogo .pen-gols .col-a{text-align:right}
+.jogo .pen-gols .pen-gol{color:var(--ink)}
+.jogo .pen-gols .pen-miss{color:var(--live);opacity:.8}
+.jogo .pen-gols .pen-gol i{font-style:normal;letter-spacing:.06em;text-transform:uppercase;color:var(--amber-ink);opacity:.9;font-size:10px}
+.jogo .pen-gols .pen-miss i{font-style:normal;letter-spacing:.06em;text-transform:uppercase;color:var(--live);opacity:.85;font-size:10px}
 .jogo .pen{font-size:11px;color:var(--ink-dim);font-family:"Saira"}
 
 /* ---------- Revelação ao vivo dos jogos (suspense) ---------- */
@@ -230,6 +254,11 @@ button.verde{background:var(--green);border-color:var(--green);color:#03150d}
 <body>
 <div class="wrap">
 
+  <a class="voltar-guia" href="../" aria-label="Voltar ao Guia da Copa">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+    Voltar ao Guia
+  </a>
+
   <!-- ===== CABEÇALHO (mesma linguagem do guia: eyebrow + h1 + sub) ===== -->
   <header>
     <button class="theme-toggle" id="themeToggle" aria-label="Alternar tema claro e escuro" title="Alternar tema">
@@ -255,7 +284,7 @@ button.verde{background:var(--green);border-color:var(--green);color:#03150d}
       <div>
         <div class="eyebrow">Bônus do Guia da Copa</div>
         <h1>Pranch<span>eta</span></h1>
-        <p class="sub">Você é o técnico. Role o dado, pesque lendas da Copa e monte o seu onze.</p>
+        <p class="sub">Você é o técnico. Sorteie elencos históricos, convoque as lendas e monte seu time dos sonhos.</p>
       </div>
     </div>
   </header>
@@ -264,6 +293,12 @@ button.verde{background:var(--green);border-color:var(--green);color:#03150d}
        TELA 1 — SETUP
        ========================================================= -->
   <section id="tela-setup" class="card">
+    <div class="grupo">
+      <label>Nome do time <small>(opcional)</small></label>
+      <input type="text" id="nome-time" class="campo-texto" maxlength="24"
+             placeholder="Ex.: Lendas FC — ou deixe em branco" autocomplete="off">
+    </div>
+
     <div class="grupo">
       <label>Formação</label>
       <div class="opcoes" id="op-formacao">
@@ -335,7 +370,6 @@ button.verde{background:var(--green);border-color:var(--green);color:#03150d}
        ========================================================= -->
   <section id="tela-resultado" class="hidden">
     <div class="card">
-      <div class="veredito" id="veredito"></div>
       <div class="sim-head hidden" id="simHead"></div>
       <div class="speed-ctrl hidden" id="speedCtrl">
         <span class="sc-lbl">Velocidade</span>
@@ -344,6 +378,7 @@ button.verde{background:var(--green);border-color:var(--green);color:#03150d}
         <button type="button" data-v="Rápido">Rápido</button>
       </div>
       <div class="jogos" id="jogos"></div>
+      <div class="veredito" id="veredito"></div>
       <button id="btn-reiniciar" class="verde hidden" style="width:100%">Jogar de novo</button>
     </div>
   </section>
@@ -702,12 +737,23 @@ function sortearAdversario(etapa){
 
 // Gera um placar de disputa de pênaltis realista (5 cobranças + morte súbita).
 // Retorna {max, min} — só a roupagem; quem vence já foi decidido pela força.
-function placarPenaltis(){
+// Gera a sequência de cobranças de uma disputa de pênaltis (5 + morte súbita).
+// T e A são listas de booleans (true = convertido) na ordem das cobranças;
+// st/sa são os totais convertidos. É só a roupagem — quem vence já foi
+// decidido pela força (a sequência é espelhada para bater com o vencedor).
+function sequenciaPenaltis(){
   const p = 0.74;                 // ~74% de conversão por cobrança
-  let a = 0, b = 0;
-  for(let i = 0; i < 5; i++){ if(Math.random() < p) a++; if(Math.random() < p) b++; }
-  while(a === b){ if(Math.random() < p) a++; if(Math.random() < p) b++; }  // morte súbita
-  return { max: Math.max(a, b), min: Math.min(a, b) };
+  const T = [], A = [];
+  let st = 0, sa = 0;
+  for(let i = 0; i < 5; i++){
+    const ct = Math.random() < p; T.push(ct); if(ct) st++;
+    const ca = Math.random() < p; A.push(ca); if(ca) sa++;
+  }
+  while(st === sa){               // morte súbita: uma cobrança de cada por rodada
+    const ct = Math.random() < p; T.push(ct); if(ct) st++;
+    const ca = Math.random() < p; A.push(ca); if(ca) sa++;
+  }
+  return { T, A, st, sa };
 }
 
 // Simula um jogo. mataMata=true → não pode empatar (decide nos pênaltis).
@@ -718,18 +764,22 @@ function simularJogo(forcaTime, forcaAdv, ment, mataMata){
   let gt = poisson(xgTime);
   let ga = poisson(xgAdv);
 
-  let penaltis = null, penT = null, penA = null;
+  let penaltis = null, penT = null, penA = null, penSeqT = null, penSeqA = null;
   if(mataMata && gt === ga){
     // desempate por pênaltis: probabilidade proporcional à razão de força
     const pTime = forcaTime / (forcaTime + forcaAdv);
     penaltis = (Math.random() < pTime) ? "time" : "adv";
-    const sd = placarPenaltis();                 // placar coerente com o vencedor
-    penT = penaltis === "time" ? sd.max : sd.min;
-    penA = penaltis === "time" ? sd.min : sd.max;
+    const seq = sequenciaPenaltis();             // sequência coerente com o vencedor
+    const timeVenceSeq = seq.st > seq.sa;
+    if(timeVenceSeq === (penaltis === "time")){  // sequência já casa com o vencedor
+      penSeqT = seq.T; penSeqA = seq.A; penT = seq.st; penA = seq.sa;
+    } else {                                      // espelha para o vencedor ficar à frente
+      penSeqT = seq.A; penSeqA = seq.T; penT = seq.sa; penA = seq.st;
+    }
   }
   const venceu =
     gt > ga || (penaltis === "time");
-  return { gt, ga, penaltis, penT, penA, venceu };
+  return { gt, ga, penaltis, penT, penA, penSeqT, penSeqA, venceu };
 }
 
 // Roda a campanha inteira (7 jogos). Para no 1º tropeço de mata-mata.
@@ -763,6 +813,7 @@ function simularCopa(){
    ============================================================================ */
 const estado = {
   formacao:    "4-3-3",
+  nomeTime:    "",           // nome do time (opcional) — vazio cai em "Seu time"
   mentalidade: "Equilibrada",
   modo:        "Classico",   // "Classico" = forças visíveis · "Almanaque" = ocultas
   slots:       [],
@@ -774,6 +825,12 @@ const estado = {
 };
 
 const $ = id => document.getElementById(id);
+
+// Escapa o que o jogador digitou antes de injetar via innerHTML
+const escapar = s => s.replace(/[&<>"]/g, c =>
+  ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c]));
+// Nome a exibir para o nosso time (fallback quando o campo fica em branco)
+const nomeDoTime = () => estado.nomeTime || "Seu time";
 
 /* ----- Tema claro/escuro -----
    Em <iframe> não há localStorage: o tema vive só em memória. O padrão segue a
@@ -817,6 +874,7 @@ function mostrarTela(qual){
 
 /* ----- Início do jogo ----- */
 $("btn-comecar").addEventListener("click", () => {
+  estado.nomeTime   = $("nome-time").value.trim();
   estado.slots      = construirSlots(estado.formacao);
   estado.rodada     = 1;
   estado.rerolls    = 3;
@@ -974,7 +1032,7 @@ function montarJogoCard(j, oculto){
   const temGols = (j.gt + j.ga) > 0;     // 0×0 não mostra súmula de gols
   div.innerHTML =
     `<div class="etapa">${j.etapa}</div>` +
-    `<div class="lado">Seu time</div>` +
+    `<div class="lado">${escapar(nomeDoTime())}</div>` +
     `<div class="placar ao-vivo"><span class="cron">0'</span><span class="liveplacar">0 × 0</span></div>` +
     `<div class="lado dir"><span class="adv-fl">${adv.fl}</span> ${adv.n} <span class="adv-ano">${adv.a}</span></div>` +
     (temGols ? `<div class="gols"><div class="col-t"></div><div class="col-a"></div></div>` : "");
@@ -1004,6 +1062,27 @@ function artilheiroTime(){
 function artilheiroAdv(adv){
   const pool = (adv.art && adv.art.length) ? adv.art : [adv.n];
   return pool[Math.floor(Math.random() * pool.length)];
+}
+
+// Lista de cobradores do nosso XI, na ordem de vocação (ATA → MEI → LAT → ZAG → GOL).
+// Repete a lista se houver mais cobranças que jogadores (morte súbita longa).
+function cobradoresTime(n){
+  const ordem = { ATA:0, MEI:1, LAT:2, ZAG:3, GOL:4 };
+  const nomes = estado.slots.filter(s => s.player)
+    .sort((a,b) => ordem[a.pos]-ordem[b.pos] || b.player.f-a.player.f)
+    .map(s => s.player.n);
+  return Array.from({length:n}, (_,i) => nomes[i % nomes.length]);
+}
+// Cobradores do adversário (craques reais da seleção, ciclando se preciso)
+function cobradoresAdv(adv, n){
+  const pool = (adv.art && adv.art.length) ? adv.art : [adv.n];
+  return Array.from({length:n}, (_,i) => pool[i % pool.length]);
+}
+// Item de súmula de uma cobrança: ✅ marcou · ❌ perdeu
+function penItem(nome, marcou){
+  return marcou
+    ? `<span class="gol-item pen-gol">✅ ${nome} <i>marcou</i></span>`
+    : `<span class="gol-item pen-miss">❌ ${nome} <i>perdeu</i></span>`;
 }
 
 // Roda o relógio do jogo tipo Brasfoot: o minuto avança rápido, o placar muda
@@ -1044,7 +1123,35 @@ async function animarJogo(div, j, mataMata){
     cronEl.classList.add("pen-cron");
     cronEl.textContent = "Pênaltis";
     await sleep(550 * fatorVel());
-    cronEl.textContent = `pên ${j.penT}×${j.penA}`;   // revela a disputa ao vivo
+
+    // Separador do tempo normal + bloco dedicado da disputa
+    div.insertAdjacentHTML("beforeend",
+      `<hr class="pen-sep">` +
+      `<div class="pen-lbl">Disputa de pênaltis</div>` +
+      `<div class="pen-gols"><div class="col-t"></div><div class="col-a"></div></div>`);
+    const penColT = div.querySelector(".pen-gols .col-t");
+    const penColA = div.querySelector(".pen-gols .col-a");
+
+    // Replay cobrança a cobrança, alternando os lados (marcou ✅ / perdeu ❌)
+    const seqT = j.penSeqT || [], seqA = j.penSeqA || [];
+    const cobT = cobradoresTime(seqT.length);
+    const cobA = cobradoresAdv(j.adversario, seqA.length);
+    let pt = 0, pa = 0;
+    const rodadas = Math.max(seqT.length, seqA.length);
+    for(let k = 0; k < rodadas; k++){
+      if(k < seqT.length){
+        if(seqT[k]) pt++;
+        penColT.insertAdjacentHTML("beforeend", penItem(cobT[k], seqT[k]));
+        cronEl.textContent = `pên ${pt}×${pa}`;
+        await sleep(360 * fatorVel());
+      }
+      if(k < seqA.length){
+        if(seqA[k]) pa++;
+        penColA.insertAdjacentHTML("beforeend", penItem(cobA[k], seqA[k]));
+        cronEl.textContent = `pên ${pt}×${pa}`;
+        await sleep(360 * fatorVel());
+      }
+    }
     await sleep(500 * fatorVel());
   }
 }
@@ -1121,7 +1228,7 @@ function montarVeredito(r, oculto){
   vEl.className = "veredito show " + classe;
   vEl.innerHTML =
     `<div class="vt">${titulo}</div>` +
-    `<div class="vs">Overall do time: ${oculto ? "?" : Math.round(r.forca)} · ${estado.formacao} · ${estado.mentalidade}<br>${sub}</div>`;
+    `<div class="vs">${escapar(nomeDoTime())} · overall ${oculto ? "?" : Math.round(r.forca)} · ${estado.formacao} · ${estado.mentalidade}<br>${sub}</div>`;
 }
 
 /* ----- Jogar de novo ----- */
