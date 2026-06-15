@@ -237,6 +237,16 @@ function pass(m){
   if(filter==='next') return !isPast(m);
   return true;
 }
+/* Como pass(), mas SEM os filtros de tempo (next/done): o painel "Jogos de hoje"
+   é a agenda do dia, então um jogo encerrado hoje continua sempre visível.
+   Ainda respeita busca e os filtros de conteúdo (Brasil/TV aberta/Cazé). */
+function passToday(m){
+  if(query && !m.q.includes(query)) return false;
+  if(filter==='br') return m.isBr;
+  if(filter==='open') return m.open;
+  if(filter==='caze') return m.cazeOnly;
+  return true;
+}
 /* índice do dia de hoje na tabela (-1 se fora do período da Copa) */
 function todayIndex(){
   const today=new Date().toLocaleDateString('en-CA',{timeZone:SP});
@@ -256,10 +266,11 @@ function renderLive(){
 function renderToday(){
   const el=$('todayPanel'); if(!el) return;
   // jogos de hoje que NÃO estão ao vivo (os ao vivo ficam no painel de andamento)
-  const games=todayDI<0?[]:M.filter(m=>m.di===todayDI&&!inProgress(m)&&pass(m)).sort((a,b)=>a.min-b.min);
+  const games=todayDI<0?[]:M.filter(m=>m.di===todayDI&&!inProgress(m)&&passToday(m)).sort((a,b)=>a.min-b.min);
   if(!games.length){
-    // sem filtro/busca ativos mostra o aviso; com filtro ativo apenas esconde o painel
-    el.innerHTML=(filter==='all'&&!query)?'<div class="today-empty">Nenhum jogo hoje</div>':'';
+    // sem filtro de conteúdo/busca ativos mostra o aviso; senão apenas esconde o painel
+    const filtrandoConteudo=filter==='br'||filter==='open'||filter==='caze'||!!query;
+    el.innerHTML=filtrandoConteudo?'':'<div class="today-empty">Nenhum jogo hoje</div>';
     return;
   }
   el.innerHTML=`<div class="today-head"><span class="today-kicker">Jogos de hoje</span><span class="today-date">${DAYS[todayDI].dow} · ${DAYS[todayDI].n}</span></div>${games.map(matchHTML).join('')}`;

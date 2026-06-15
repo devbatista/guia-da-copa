@@ -308,38 +308,38 @@ const ETAPAS  = [
 // BRACKET acima — o nome+ano é só identidade (todos são seleções de Copa de verdade).
 // art = possíveis autores dos gols (craques reais daquela seleção). Sorteia 1 por jogo.
 const ADVERSARIOS = [
-  [ {n:"Canadá",fl:"🇨🇦",a:2022,art:["Davies","J. David","Larin","Buchanan"]},
-    {n:"Catar",fl:"🇶🇦",a:2022,art:["Almoez Ali","Afif","Muntari"]},
-    {n:"Nova Zelândia",fl:"🇳🇿",a:2010,art:["Reid","Smeltz","Fallon","Killen"]},
-    {n:"Arábia Saudita",fl:"🇸🇦",a:2018,art:["Al-Dawsari","Al-Faraj","Al-Muwallad"]},
-    {n:"Tunísia",fl:"🇹🇳",a:2018,art:["Khazri","F. Ben Youssef","Sassi"]} ],                              // grupos 1
-  [ {n:"Japão",fl:"🇯🇵",a:2022,art:["Doan","Mitoma","Maeda","Asano","Tanaka"]},
-    {n:"Austrália",fl:"🇦🇺",a:2022,art:["Duke","Leckie","Goodwin","Rogic"]},
-    {n:"Egito",fl:"🇪🇬",a:2018,art:["Salah","Trezeguet","M. Mohsen"]},
-    {n:"Coreia do Sul",fl:"🇰🇷",a:2018,art:["Son","Hwang","Kim Y."]},
-    {n:"Irã",fl:"🇮🇷",a:2018,art:["Taremi","Azmoun","Ansarifard"]} ],                                     // grupos 2
-  [ {n:"México",fl:"🇲🇽",a:2018,art:["Chicharito","Lozano","C. Vela","R. Jiménez"]},
-    {n:"Estados Unidos",fl:"🇺🇸",a:2022,art:["Pulisic","Weah","Sargent","Ferreira"]},
-    {n:"Nigéria",fl:"🇳🇬",a:1998,art:["Oliseh","Ikpeba","Babangida","Yekini"]},
-    {n:"Costa Rica",fl:"🇨🇷",a:2014,art:["B. Ruiz","J. Campbell","Bolaños"]},
-    {n:"Equador",fl:"🇪🇨",a:2006,art:["A. Valencia","Delgado","Tenorio"]} ],                              // grupos 3
-  [ {n:"Suíça",fl:"🇨🇭",a:2018,art:["Shaqiri","Xhaka","Seferovic","Dzemaili"]},
-    {n:"Dinamarca",fl:"🇩🇰",a:1998,art:["B. Laudrup","M. Laudrup","Sand","Møller"]},
-    {n:"Uruguai",fl:"🇺🇾",a:2010,art:["Forlán","Suárez","Cavani","Pereira"]},
-    {n:"Senegal",fl:"🇸🇳",a:2002,art:["Diouf","H. Camara","Fadiga"]},
-    {n:"Colômbia",fl:"🇨🇴",a:2014,art:["J. Rodríguez","Martínez","Cuadrado"]} ],                          // oitavas
-  [ {n:"Holanda",fl:"🇳🇱",a:2014,art:["Robben","Van Persie","Sneijder","Depay"]},
-    {n:"Portugal",fl:"🇵🇹",a:2022,art:["G. Ramos","João Félix","Bruno F.","C. Ronaldo"]},
-    {n:"Itália",fl:"🇮🇹",a:1994,art:["R. Baggio","Massaro","D. Baggio","Signori"]},
-    {n:"Inglaterra",fl:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",a:1990,art:["Lineker","Platt","Beardsley"]} ],                            // quartas
-  [ {n:"Alemanha",fl:"🇩🇪",a:2010,art:["Müller","Klose","Podolski","Özil"]},
-    {n:"Espanha",fl:"🇪🇸",a:2022,art:["Morata","Asensio","F. Torres","Gavi"]},
-    {n:"França",fl:"🇫🇷",a:2006,art:["Henry","Zidane","Ribéry","Vieira"]},
-    {n:"Croácia",fl:"🇭🇷",a:2022,art:["Modrić","Kramarić","Perišić","Oršić"]} ],                          // semi
-  [ {n:"Brasil",fl:"🇧🇷",a:1962,art:["Garrincha","Vavá","Amarildo","Pelé"]},
-    {n:"Argentina",fl:"🇦🇷",a:2014,art:["Messi","Higuaín","Di María","Agüero"]},
-    {n:"Alemanha",fl:"🇩🇪",a:2002,art:["Klose","Ballack","Neuville"]},
-    {n:"França",fl:"🇫🇷",a:1986,art:["Platini","Papin","Giresse"]} ],                                     // final
+  [ {n:"Canadá",fl:"🇨🇦",a:2022,art:["Davies","J. David","Larin","Buchanan","Hoilett","Eustáquio","Osorio","Laryea","Johnston","Vitória","Borjan"]},
+    {n:"Catar",fl:"🇶🇦",a:2022,art:["Almoez Ali","Afif","Muntari","Al-Haydos","Hatim","Ali Asad","Madibo","Boudiaf","Khoukhi","Pedro Miguel","Al-Sheeb"]},
+    {n:"Nova Zelândia",fl:"🇳🇿",a:2010,art:["Smeltz","Fallon","Killen","Wood","Bertos","Brown","Elliott","Vicelich","Nelsen","Reid","Paston"]},
+    {n:"Arábia Saudita",fl:"🇸🇦",a:2018,art:["Al-Dawsari","Al-Muwallad","Al-Sahlawi","Al-Faraj","Al-Shehri","Otayf","Kanno","Al-Shahrani","Al-Burayk","O. Hawsawi","Al-Owais"]},
+    {n:"Tunísia",fl:"🇹🇳",a:2018,art:["Khazri","F. Ben Youssef","Sliti","Sassi","Badri","Skhiri","Khaoui","Maâloul","Bronn","S. Ben Youssef","Hassen"]} ],   // grupos 1
+  [ {n:"Japão",fl:"🇯🇵",a:2022,art:["Doan","Mitoma","Maeda","Asano","Tanaka","Kubo","Kamada","Minamino","Endo","Yoshida","Gonda"]},
+    {n:"Austrália",fl:"🇦🇺",a:2022,art:["Duke","Leckie","Goodwin","Rogic","Mooy","Hrustic","McGree","Boyle","Irvine","Behich","Ryan"]},
+    {n:"Egito",fl:"🇪🇬",a:2018,art:["Salah","Trezeguet","M. Mohsen","Sobhi","Warda","Kahraba","Elneny","Hamed","Hegazi","Fathy","El-Shenawy"]},
+    {n:"Coreia do Sul",fl:"🇰🇷",a:2018,art:["Son","Hwang","Kim Y.","Lee Jae-sung","Koo Ja-cheol","Lee Seung-woo","Moon Seon-min","Ki Sung-yueng","Lee Yong","Jang Hyun-soo","Cho Hyun-woo"]},
+    {n:"Irã",fl:"🇮🇷",a:2018,art:["Taremi","Azmoun","Ansarifard","Jahanbakhsh","Dejagah","Amiri","Shojaei","Ezatolahi","Hajsafi","Pouraliganji","Beiranvand"]} ],   // grupos 2
+  [ {n:"México",fl:"🇲🇽",a:2018,art:["Chicharito","Lozano","C. Vela","R. Jiménez","Corona","H. Herrera","Guardado","M. Fabián","Layún","H. Moreno","Ochoa"]},
+    {n:"Estados Unidos",fl:"🇺🇸",a:2022,art:["Pulisic","Weah","Sargent","Ferreira","Reyna","McKennie","Aaronson","Musah","Adams","Dest","Turner"]},
+    {n:"Nigéria",fl:"🇳🇬",a:1998,art:["Yekini","Ikpeba","Babangida","Kanu","Okocha","Oliseh","Finidi","Lawal","Babayaro","West","Rufai"]},
+    {n:"Costa Rica",fl:"🇨🇷",a:2014,art:["B. Ruiz","J. Campbell","Bolaños","Ureña","Saborío","Borges","Tejeda","Cubero","Gamboa","González","Navas"]},
+    {n:"Equador",fl:"🇪🇨",a:2006,art:["Delgado","A. Valencia","Tenorio","Kaviedes","Méndez","Castillo","Lara","Ayoví","Hurtado","de la Cruz","Mora"]} ],   // grupos 3
+  [ {n:"Suíça",fl:"🇨🇭",a:2018,art:["Shaqiri","Xhaka","Seferovic","Dzemaili","Embolo","Zuber","Drmić","Freuler","Rodríguez","Schär","Sommer"]},
+    {n:"Dinamarca",fl:"🇩🇰",a:1998,art:["B. Laudrup","M. Laudrup","Sand","Møller","A. Nielsen","Tøfting","Helveg","Høgh","Rieper","Heintze","Schmeichel"]},
+    {n:"Uruguai",fl:"🇺🇾",a:2010,art:["Forlán","Suárez","Cavani","Abreu","Pereira","Pérez","Arévalo Ríos","Eguren","Godín","Lugano","Muslera"]},
+    {n:"Senegal",fl:"🇸🇳",a:2002,art:["Diouf","H. Camara","Fadiga","Bouba Diop","Diao","Cissé","S. Camara","Beye","Diatta","Coly","Sylva"]},
+    {n:"Colômbia",fl:"🇨🇴",a:2014,art:["J. Rodríguez","Martínez","Cuadrado","Bacca","T. Gutiérrez","Quintero","C. Sánchez","Aguilar","Zúñiga","Yepes","Ospina"]} ],   // oitavas
+  [ {n:"Holanda",fl:"🇳🇱",a:2014,art:["Robben","Van Persie","Sneijder","Depay","Huntelaar","Wijnaldum","Lens","De Guzmán","Blind","De Vrij","Cillessen"]},
+    {n:"Portugal",fl:"🇵🇹",a:2022,art:["G. Ramos","João Félix","Bruno F.","C. Ronaldo","Leão","Bernardo Silva","João Mário","Rúben Neves","Cancelo","Pepe","Diogo Costa"]},
+    {n:"Itália",fl:"🇮🇹",a:1994,art:["R. Baggio","Massaro","D. Baggio","Signori","Casiraghi","Donadoni","Albertini","Berti","Maldini","Baresi","Pagliuca"]},
+    {n:"Inglaterra",fl:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",a:1990,art:["Lineker","Platt","Beardsley","Waddle","Gascoigne","Barnes","Robson","Pearce","Walker","Butcher","Shilton"]} ],   // quartas
+  [ {n:"Alemanha",fl:"🇩🇪",a:2010,art:["Müller","Klose","Podolski","Özil","Schweinsteiger","Khedira","Gómez","Cacau","Lahm","Mertesacker","Neuer"]},
+    {n:"Espanha",fl:"🇪🇸",a:2022,art:["Morata","Asensio","F. Torres","Gavi","Olmo","Sarabia","Pedri","Busquets","J. Alba","Laporte","Unai Simón"]},
+    {n:"França",fl:"🇫🇷",a:2006,art:["Henry","Zidane","Ribéry","Vieira","Trezeguet","Malouda","Govou","Wiltord","Sagnol","Thuram","Barthez"]},
+    {n:"Croácia",fl:"🇭🇷",a:2022,art:["Modrić","Kramarić","Perišić","Oršić","Petković","Livaja","Brozović","Kovačić","Majer","Juranović","Livaković"]} ],   // semi
+  [ {n:"Brasil",fl:"🇧🇷",a:1962,art:["Garrincha","Vavá","Amarildo","Pelé","Zagallo","Didi","Zito","Pepe","Djalma Santos","Nílton Santos","Gilmar"]},
+    {n:"Argentina",fl:"🇦🇷",a:2014,art:["Messi","Higuaín","Di María","Agüero","Lavezzi","Palacio","Maxi Rodríguez","Mascherano","Zabaleta","Garay","Romero"]},
+    {n:"Alemanha",fl:"🇩🇪",a:2002,art:["Klose","Ballack","Neuville","Bierhoff","Jancker","Schneider","Frings","Ziege","Linke","Metzelder","Kahn"]},
+    {n:"França",fl:"🇫🇷",a:1986,art:["Platini","Papin","Giresse","Stopyra","Bellone","Rocheteau","Tigana","Fernández","Amoros","Battiston","Bats"]} ],   // final
 ];
 function sortearAdversario(etapa){
   const pool = ADVERSARIOS[etapa];
@@ -491,15 +491,19 @@ const escapar = s => s.replace(/[&<>"]/g, c =>
 const nomeDoTime = () => estado.nomeTime || "Seu time";
 
 /* ----- Tema claro/escuro -----
-   Em <iframe> não há localStorage: o tema vive só em memória. O padrão segue a
-   preferência do sistema, e o site pai pode sincronizar enviando
-   postMessage({prancheta_theme:'light'|'dark'}). */
+   Persistido em localStorage na chave "gdc-theme" — a MESMA do Guia da Copa —
+   então a escolha do tema sobrevive à navegação entre o guia e a prancheta.
+   Fallback: preferência do sistema. O site pai ainda pode sincronizar via
+   postMessage({prancheta_theme:'light'|'dark'}) caso rode embutido. */
 function aplicarTema(t){
   document.documentElement.setAttribute("data-theme", t);
+  try{ localStorage.setItem("gdc-theme", t); }catch(e){}
   reportarAltura();
 }
-const temaInicial =
-  (window.matchMedia && matchMedia("(prefers-color-scheme: light)").matches) ? "light" : "dark";
+let temaInicial;
+try{ temaInicial = localStorage.getItem("gdc-theme"); }catch(e){}
+if(temaInicial !== "light" && temaInicial !== "dark")
+  temaInicial = (window.matchMedia && matchMedia("(prefers-color-scheme: light)").matches) ? "light" : "dark";
 aplicarTema(temaInicial);
 $("themeToggle").addEventListener("click", () => {
   const atual = document.documentElement.getAttribute("data-theme");
@@ -716,10 +720,12 @@ function artilheiroTime(){
   return cands[cands.length - 1].nome;
 }
 
-// Sorteia o autor de um gol do adversário (craques reais da seleção)
+// Sorteia o autor de um gol do adversário (craques reais da seleção).
+// art está ordenado por vocação ofensiva (atacantes → ... → goleiro), então
+// enviesamos para o início da lista: atacantes marcam bem mais que zagueiros.
 function artilheiroAdv(adv){
   const pool = (adv.art && adv.art.length) ? adv.art : [adv.n];
-  return pool[Math.floor(Math.random() * pool.length)];
+  return pool[Math.floor(pool.length * Math.random() ** 2)];
 }
 
 // Lista de cobradores do nosso XI, na ordem de vocação (ATA → MEI → LAT → ZAG → GOL).
