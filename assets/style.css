@@ -54,6 +54,12 @@ h1 .yr{color:var(--amber-ink)}
   padding:7px 14px;display:inline-flex;align-items:center;gap:7px;transition:.15s}
 .prancheta-link:hover{filter:brightness(1.06)}
 .prancheta-link svg{width:14px;height:15px}
+/* Classificação: pílula neutra (não compete com o âmbar da Prancheta) */
+.classif-link{font-family:"Saira Condensed";font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.04em;
+  text-decoration:none;cursor:pointer;color:var(--ink);background:var(--board-2);border:1px solid var(--line);border-radius:999px;
+  padding:7px 14px;display:inline-flex;align-items:center;gap:7px;transition:.15s}
+.classif-link:hover{border-color:var(--line-hi);color:var(--amber-ink)}
+.classif-link svg{width:15px;height:15px}
 /* Grupo dos botões de ação: no desktop ficam juntos à direita da barra */
 .live-actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-left:auto}
 .theme-toggle{position:absolute;top:30px;right:0;z-index:2;cursor:pointer;

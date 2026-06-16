@@ -1,0 +1,147 @@
+/* ============================================================
+   Classificação — fase de grupos
+   Mesmos tokens do Guia da Copa (assets/style.css). CSS isolado.
+   ============================================================ */
+:root{
+  --board:#0c1620;--board-2:#11202d;--panel:#16293a;--panel-hi:#1b3144;
+  --line:#26425a;--line-hi:#3a607e;--ink:#e8eef3;--ink-dim:#94aabb;
+  --amber:#f6c544;--amber-ink:var(--amber);--br-yellow:#ffd400;
+  --green:#5fd08a;--live:#ff4d4d;--glow:#1a3247;--radius:13px;
+  --q:rgba(95,208,138,.13);--q-edge:#5fd08a;--q3:rgba(246,197,68,.13);--q3-edge:#f6c544;
+  color-scheme:dark;
+}
+[data-theme="light"]{
+  --board:#eef2f6;--board-2:#ffffff;--panel:#ffffff;--panel-hi:#f3f8fb;
+  --line:#d7e1ea;--line-hi:#aabccd;--ink:#16242f;--ink-dim:#5d7488;
+  --amber:#f0b400;--amber-ink:#9a6a00;
+  --green:#1f9d5b;--live:#e23b3b;--glow:#dbe9f6;
+  --q:rgba(31,157,91,.12);--q-edge:#1f9d5b;--q3:rgba(240,180,0,.16);--q3-edge:#cf9000;
+  color-scheme:light;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:radial-gradient(1200px 500px at 50% -120px,var(--glow) 0%,transparent 70%),var(--board);
+  color:var(--ink);font-family:"Saira",system-ui,sans-serif;line-height:1.45;
+  padding:20px 16px 80px;-webkit-font-smoothing:antialiased}
+.wrap{max-width:980px;margin:0 auto;position:relative}
+a{color:var(--amber-ink)}
+
+/* overlay de carregamento */
+#loader{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+  background:radial-gradient(1200px 500px at 50% -120px,var(--glow) 0%,transparent 70%),var(--board)}
+#loader .spinner{width:36px;height:36px;border:3px solid var(--line);border-top-color:var(--amber);border-radius:50%;animation:spin 1s linear infinite}
+#loader .loading-txt{font-family:"Saira Condensed";font-weight:700;font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-dim)}
+body.ready #loader{opacity:0;visibility:hidden;transition:opacity .35s ease,visibility 0s .35s}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Voltar ao Guia */
+.voltar-guia{display:inline-flex;align-items:center;gap:8px;margin-bottom:16px;
+  font-family:"Saira Condensed";font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.04em;
+  text-decoration:none;color:var(--ink);background:var(--board-2);border:1px solid var(--line);border-radius:999px;
+  padding:8px 14px;transition:.15s}
+.voltar-guia:hover{border-color:var(--line-hi);color:var(--amber-ink)}
+.voltar-guia svg{width:15px;height:15px;flex:none}
+
+/* ---------- Cabeçalho ---------- */
+header{position:relative;margin-bottom:22px}
+.brand{display:flex;align-items:center;gap:16px}
+.brand > svg{width:50px;height:65px;flex:none}
+.eyebrow{font-family:"Saira Condensed";font-weight:700;letter-spacing:.22em;text-transform:uppercase;
+  font-size:12px;color:var(--amber-ink);display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.eyebrow::before{content:"";height:1px;flex:0 0 26px;background:var(--amber);opacity:.7}
+.eyebrow::after{content:"";height:1px;flex:1 1 auto;background:var(--amber);opacity:.25}
+header h1{font-family:"Saira Condensed";font-weight:800;font-size:clamp(30px,7vw,46px);line-height:.94;
+  text-transform:uppercase;letter-spacing:-.01em}
+header h1 span{color:var(--amber-ink)}
+header .sub{color:var(--ink-dim);font-size:15px;margin-top:8px;max-width:64ch}
+
+/* Botão de tema */
+.theme-toggle{position:absolute;top:0;right:0;z-index:2;cursor:pointer;
+  font-family:"Saira Condensed";font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.04em;
+  color:var(--ink);background:var(--board-2);border:1px solid var(--line);border-radius:999px;
+  padding:8px 14px;display:inline-flex;align-items:center;gap:8px;transition:.15s}
+.theme-toggle:hover{border-color:var(--line-hi);color:var(--amber-ink)}
+.theme-toggle svg{width:15px;height:15px;flex:none}
+.theme-toggle .ic-moon{display:none}
+[data-theme="light"] .theme-toggle .ic-sun{display:none}
+[data-theme="light"] .theme-toggle .ic-moon{display:inline}
+
+/* Barra de status ao vivo (igual ao guia) */
+.live-bar{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;margin-top:16px}
+.src{font-family:"Saira Condensed";font-weight:600;font-size:13px;color:var(--ink-dim);display:inline-flex;align-items:center;gap:7px}
+.src .dot{width:8px;height:8px;border-radius:50%;background:var(--ink-dim);flex:none}
+.src.ok .dot{background:var(--green);animation:pulse 2.4s infinite}
+.src.off .dot{background:#7e93a6}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(95,208,138,.45)}70%{box-shadow:0 0 0 8px rgba(95,208,138,0)}100%{box-shadow:0 0 0 0 rgba(95,208,138,0)}}
+.refresh{font-family:"Saira Condensed";font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.04em;
+  cursor:pointer;color:var(--ink);background:var(--board-2);border:1px solid var(--line);border-radius:999px;
+  padding:7px 14px;display:inline-flex;align-items:center;gap:7px;transition:.15s}
+.refresh:hover{border-color:var(--line-hi)}
+.refresh:disabled{opacity:.5;cursor:default}
+.refresh svg{width:13px;height:13px}
+.refresh.spin svg{animation:spin 1s linear infinite}
+
+/* Legenda das zonas */
+.legend{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:14px;padding-top:14px;border-top:1px solid var(--line);
+  font-size:13px;color:var(--ink-dim)}
+.legend .lg{display:inline-flex;align-items:center;gap:7px}
+.legend i{width:12px;height:12px;border-radius:3px;flex:none}
+.legend .z-q{background:var(--q);box-shadow:inset 3px 0 0 var(--q-edge)}
+.legend .z-q3{background:var(--q3);box-shadow:inset 3px 0 0 var(--q3-edge)}
+
+/* ---------- Grade de grupos ---------- */
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+.gcard{background:linear-gradient(180deg,var(--panel-hi),var(--board-2));
+  border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+.ghead{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:12px 14px;border-bottom:1px solid var(--line)}
+.gname{font-family:"Saira Condensed";font-weight:800;font-size:17px;letter-spacing:.04em;text-transform:uppercase}
+.gtag{font-family:"Saira Condensed";font-weight:700;font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--ink-dim);background:var(--board-2);border:1px solid var(--line);border-radius:999px;padding:3px 9px}
+.gtag.done{color:var(--green);border-color:color-mix(in srgb,var(--green) 45%,var(--line))}
+
+/* tabela */
+.gtable{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.gtable th{font-family:"Saira Condensed";font-weight:700;font-size:11px;letter-spacing:.04em;text-transform:uppercase;
+  color:var(--ink-dim);padding:8px 4px;text-align:center;border-bottom:1px solid var(--line)}
+.gtable td{padding:9px 4px;text-align:center;font-size:14px;border-bottom:1px solid color-mix(in srgb,var(--line) 55%,transparent)}
+.gtable tbody tr:last-child td{border-bottom:0}
+.gtable th.pos,.gtable td.pos{width:26px;color:var(--ink-dim);font-family:"Saira Condensed";font-weight:700}
+.gtable th.team,.gtable td.team{text-align:left;padding-left:10px;white-space:nowrap}
+.gtable td.team{display:flex;align-items:center;gap:8px}
+.gtable .tn{font-weight:600;overflow:hidden;text-overflow:ellipsis}
+.gtable th.pt,.gtable td.pt{font-family:"Saira Condensed";font-weight:800;color:var(--amber-ink);font-size:15px}
+.gtable .sg{font-weight:600}
+
+/* faixa de classificação na 1ª coluna */
+.gtable tr.q td.pos{box-shadow:inset 3px 0 0 var(--q-edge)}
+.gtable tr.q td{background:var(--q)}
+.gtable tr.q3 td.pos{box-shadow:inset 3px 0 0 var(--q3-edge)}
+.gtable tr.q3 td{background:var(--q3)}
+
+/* bandeiras (como no guia) */
+img.flag{width:1.3em;height:auto;border-radius:2px;box-shadow:0 0 0 1px rgba(0,0,0,.3);flex:none}
+.flag-emoji{font-size:1.1em}
+.br-name{color:var(--br-yellow);font-weight:700}
+[data-theme="light"] .br-name{color:#0f7a44}
+
+footer{margin-top:26px;padding-top:16px;border-top:1px solid var(--line);
+  color:var(--ink-dim);font-size:12.5px;line-height:1.6}
+footer .credit{margin-top:6px}
+footer a{text-decoration:none}
+footer a:hover{text-decoration:underline}
+
+/* ---------- mobile ---------- */
+@media (max-width:760px){
+  .grid{grid-template-columns:1fr}
+  .theme-toggle{position:static;margin-bottom:14px}
+  header{padding-top:0}
+  .gtable td,.gtable th{padding-left:2px;padding-right:2px;font-size:13px}
+  .gtable th.team,.gtable td.team{padding-left:8px}
+  img.flag{width:1.15em}
+}
+@media (max-width:380px){
+  /* telas bem estreitas: GP/GC viram só o saldo p/ não estourar */
+  .gtable th:nth-child(8),.gtable td:nth-child(8),
+  .gtable th:nth-child(9),.gtable td:nth-child(9){display:none}
+}
