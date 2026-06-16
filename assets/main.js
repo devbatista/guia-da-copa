@@ -211,7 +211,7 @@ function matchHTML(m){
   const mid=st.score
     ? `<span class="sc${st.live?' islive':''}">${st.score[0]}</span><span class="vs">×</span><span class="sc${st.live?' islive':''}">${st.score[1]}</span>`
     : `<span class="vs">×</span>`;
-  const toggle=playable?`<div class="stat-toggle">Estatísticas <span class="chev">▾</span></div>`:'';
+  const toggle=playable?`<div class="stat-toggle">Detalhes da partida <span class="chev">▾</span></div>`:'';
   const statbox=playable?`<div class="statbox" data-eid="${m.eid}"${isOpen?'':' hidden'}>${isOpen?(statCache[m.eid]||'<div class="stat-empty">Carregando estatísticas…</div>'):''}</div>`:'';
   return `<div class="${cls}"${playable?` data-eid="${m.eid}"`:''} data-q="${m.q}">
     <div class="tcol">${top}${line}</div>
@@ -372,7 +372,83 @@ const STAT_DEFS=[
 const statCache={};        // eid -> html (cache de jogo encerrado)
 const openSet=new Set();   // eids com painel aberto
 const statVal=(t,k)=>{ const s=(t.statistics||[]).find(x=>x.name===k); return s?parseFloat(s.displayValue):null; };
-function buildStats(m,box){
+function teamKey(t){
+  const team=t&&t.team?t.team:t;
+  return {
+    id:team&&team.id?String(team.id):null,
+    pt:toPT(team&&(team.displayName||team.name||team.shortDisplayName)),
+  };
+}
+function playTeam(sp,teams){
+  const k=teamKey(sp);
+  if(k.pt) return k.pt;
+  if(k.id){
+    const found=teams.find(t=>teamKey(t).id===k.id);
+    if(found) return teamKey(found).pt;
+  }
+  return null;
+}
+function scorerName(sp){
+  const pools=[sp.participants,sp.athletesInvolved,sp.athletes].filter(Array.isArray);
+  for(const pool of pools){
+    for(const p of pool){
+      const a=p.athlete||p;
+      const name=a&&(
+        a.displayName||a.fullName||a.shortName||a.name||
+        (a.athlete&&(a.athlete.displayName||a.athlete.fullName||a.athlete.name))
+      );
+      if(name) return name;
+    }
+  }
+  const direct=sp.athlete||sp.scorer;
+  if(direct&&(direct.displayName||direct.fullName||direct.name)) return direct.displayName||direct.fullName||direct.name;
+  const txt=sp.text||sp.shortText||sp.displayText||'';
+  const parsed=txt.split('(')[0].replace(/\b(goal|gol|penalty|own goal)\b/ig,'').trim();
+  return parsed||'Gol';
+}
+function goalMinute(sp){
+  const clock=sp.clock;
+  if(clock&&clock.displayValue) return clock.displayValue;
+  if(clock&&Number.isFinite(+clock.value)) return `${Math.ceil(+clock.value/60)}'`;
+  if(sp.time&&sp.time.displayValue) return sp.time.displayValue;
+  if(sp.period&&sp.period.displayValue) return sp.period.displayValue;
+  return '';
+}
+function scoringPlays(data){
+  const pools=[
+    data&&data.scoringPlays,
+    data&&data.header&&data.header.competitions&&data.header.competitions[0]&&data.header.competitions[0].details,
+    data&&data.competitions&&data.competitions[0]&&data.competitions[0].details,
+    data&&data.plays,
+  ].filter(Array.isArray);
+  return pools.find(p=>p.length)||[];
+}
+function buildGoals(m,data,teams){
+  const plays=scoringPlays(data);
+  const goals=plays.filter(sp=>{
+    const txt=[sp.type&&sp.type.text,sp.text,sp.shortText,sp.displayText].filter(Boolean).join(' ');
+    return !txt||/(goal|gol|penalty|own goal)/i.test(txt);
+  }).map(sp=>({
+    team:playTeam(sp,teams),
+    name:scorerName(sp),
+    minute:goalMinute(sp),
+    own:/own goal|gol contra/i.test([sp.type&&sp.type.text,sp.text,sp.shortText,sp.displayText].filter(Boolean).join(' ')),
+    pen:/penalty|pênalti|penalti/i.test([sp.type&&sp.type.text,sp.text,sp.shortText,sp.displayText].filter(Boolean).join(' ')),
+  })).filter(g=>g.team===m.a||g.team===m.b);
+  if(!goals.length) return '<div class="goals"><div class="stat-title">Gols</div><div class="stat-empty">Autores dos gols indisponíveis para esta partida.</div></div>';
+  const list=teamName=>goals.filter(g=>g.team===teamName).map(g=>{
+    const note=[g.own?'contra':'',g.pen?'pênalti':''].filter(Boolean).join(' · ');
+    return `<li><span class="goal-minute">${esc(g.minute)}</span><span>${esc(g.name)}</span>${note?`<small>${esc(note)}</small>`:''}</li>`;
+  }).join('');
+  return `<div class="goals">
+    <div class="stat-title">Gols</div>
+    <div class="goal-cols">
+      <div><div class="goal-team">${team(m.a,m.isBr)}</div><ul>${list(m.a)||'<li class="muted">Sem gols</li>'}</ul></div>
+      <div><div class="goal-team right">${team(m.b,m.isBr,true)}</div><ul>${list(m.b)||'<li class="muted">Sem gols</li>'}</ul></div>
+    </div>
+  </div>`;
+}
+function buildStats(m,box,data){
   const teams=(box&&box.teams)||[];
   let ta=null, tb=null;
   teams.forEach(t=>{ const pt=toPT(t.team&&(t.team.displayName||t.team.name)); if(pt===m.a)ta=t; else if(pt===m.b)tb=t; });
@@ -397,7 +473,7 @@ function buildStats(m,box){
     const sum=va+vb, share=sum?Math.round(va/sum*100):50, sfx=d.pct?'%':'';
     rows+=`<div class="stat-row"><span class="stat-v sa">${va}${sfx}</span><div class="stat-mid"><span class="stat-label">${d.label}</span><div class="stat-bar" style="background:${cb}${ol(cb)}"><i style="width:${share}%;background:${ca}${ol(ca)}"></i></div></div><span class="stat-v sb">${vb}${sfx}</span></div>`;
   });
-  return rows||'<div class="stat-empty">Sem estatísticas ainda.</div>';
+  return `${buildGoals(m,data,teams)}${rows?`<div class="stat-title">Estatísticas</div>${rows}`:'<div class="stat-empty">Sem estatísticas ainda.</div>'}`;
 }
 const paintStats=(eid,html)=>document.querySelectorAll('.statbox[data-eid="'+eid+'"]').forEach(b=>b.innerHTML=html);
 async function loadStats(eid){
@@ -406,7 +482,7 @@ async function loadStats(eid){
   paintStats(eid,'<div class="stat-empty">Carregando estatísticas…</div>');
   try{
     const data=await (await fetch(SUMMARY+eid,{cache:'no-store'})).json();
-    const html=buildStats(m,data.boxscore);
+    const html=buildStats(m,data.boxscore,data);
     if(!m.live) statCache[eid]=html;
     paintStats(eid,html);
   }catch(e){ paintStats(eid,'<div class="stat-empty">Não foi possível carregar as estatísticas.</div>'); }
