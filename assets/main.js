@@ -188,8 +188,11 @@ const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
 const ABBR={'Rep. Dem. do Congo':'RD Congo','Bósnia e Herzegovina':'Bósnia','Estados Unidos':'EUA','República Tcheca':'Rep. Tcheca'};
 const team=(n,br,after)=>{
   const disp=esc(ABBR[n]||n);
-  const name=br&&n==='Brasil'?`<span class="br-name">${disp}</span>`:disp;
-  return after?`${name}${flag(n,true)}`:`${flag(n)}${name}`;
+  const name=br&&n==='Brasil'?`<span class="team-label br-name">${disp}</span>`:`<span class="team-label">${disp}</span>`;
+  const side=after?'away':'home';
+  return after
+    ? `<span class="team-name ${side}">${name}${flag(n,true)}</span>`
+    : `<span class="team-name ${side}">${flag(n)}${name}</span>`;
 };
 const pills=ch=>[...ch].sort((x,y)=>ORD[CAT[x]]-ORD[CAT[y]]).map(c=>{const k=CAT[c];return `<span class="pill p-${k}"><i class="${k}"></i>${esc(c)}</span>`;}).join('');
 
@@ -209,8 +212,8 @@ function matchHTML(m){
   const top=`<div class="time${st.live?' islive':''}${st.half?' half':''}">${st.left}</div>`;
   const line=st.cls?`<span class="status ${st.cls}"><span class="d"></span>${st.label}</span>`:`<small>${st.label}</small>`;
   const mid=st.score
-    ? `<span class="sc${st.live?' islive':''}">${st.score[0]}</span><span class="vs">×</span><span class="sc${st.live?' islive':''}">${st.score[1]}</span>`
-    : `<span class="vs">×</span>`;
+    ? `<span class="match-score"><span class="sc${st.live?' islive':''}">${st.score[0]}</span><span class="vs">×</span><span class="sc${st.live?' islive':''}">${st.score[1]}</span></span>`
+    : `<span class="match-score"><span class="vs">×</span></span>`;
   const toggle=playable?`<div class="stat-toggle">Detalhes da partida <span class="chev">▾</span></div>`:'';
   const statbox=playable?`<div class="statbox" data-eid="${m.eid}"${isOpen?'':' hidden'}>${isOpen?(statCache[m.eid]||'<div class="stat-empty">Carregando estatísticas…</div>'):''}</div>`:'';
   return `<div class="${cls}"${playable?` data-eid="${m.eid}"`:''} data-q="${m.q}">
