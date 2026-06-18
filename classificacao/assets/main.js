@@ -90,9 +90,11 @@ function applyEvents(events){
     if(!pa||!pb) return;
     if(!GROUP_OF[pa]||GROUP_OF[pa]!==GROUP_OF[pb]) return;   // só confrontos da fase de grupos
     const st=(ev.status||c.status||{}), state=(st.type||{}).state;   // pre | in | post
-    if(state==='in') live++;
-    if(state!=='post') return;
-    results[pairKey(pa,pb)]={a:pa,b:pb,ga:+home.score||0,gb:+away.score||0};
+    if(state==='pre') return;                 // ainda não começou: não entra na conta
+    const isLive=state==='in';
+    if(isLive) live++;
+    /* jogos ao vivo entram na tabela como parcial (live:true); encerrados sobrescrevem com live:false */
+    results[pairKey(pa,pb)]={a:pa,b:pb,ga:+home.score||0,gb:+away.score||0,live:isLive};
   });
   return {live};
 }
@@ -136,28 +138,35 @@ function bestThirds(tbl){
 }
 
 /* ---------- render ---------- */
-function teamCell(name){
+function teamCell(name,live){
   const disp=esc(ABBR[name]||name);
   const cls=name==='Brasil'?' br-name':'';
-  return `${flag(name)}<span class="tn${cls}">${disp}</span>`;
+  const dot=live?'<span class="live-dot" title="Jogo em andamento — parcial"></span>':'';
+  return `${flag(name)}<span class="tn${cls}">${disp}</span>${dot}`;
 }
 function render(){
   const tbl=standings();
   const thirdsIn=bestThirds(tbl);
+  /* times que estão num jogo em andamento (números provisórios na tabela) */
+  const liveTeams=new Set();
+  Object.values(results).forEach(r=>{ if(r.live){ liveTeams.add(r.a); liveTeams.add(r.b); } });
   let html='';
   for(const g of Object.keys(GROUPS)){
     const rows=tbl[g];
-    const played=rows.reduce((s,r)=>s+r.j,0)/2;   // jogos disputados no grupo (de 6)
-    const tag=played===0?'<span class="gtag">a começar</span>'
+    const played=rows.reduce((s,r)=>s+r.j,0)/2;   // jogos disputados/em andamento no grupo (de 6)
+    const groupLive=rows.some(r=>liveTeams.has(r.name));
+    const tag=groupLive ?'<span class="gtag live">ao vivo</span>'
+             :played===0?'<span class="gtag">a começar</span>'
              :played<6 ?`<span class="gtag">${played}/6 jogos</span>`
                         :'<span class="gtag done">encerrado</span>';
     const body=rows.map((r,i)=>{
       const pos=i+1;
       const zone=pos<=2?'q':(pos===3&&thirdsIn.has(g)?'q3':'');
+      const live=liveTeams.has(r.name);
       const sg=(r.sg>0?'+':'')+r.sg;
-      return `<tr class="${zone}">
+      return `<tr class="${zone}${live?' live':''}">
         <td class="pos">${pos}</td>
-        <td class="team">${teamCell(r.name)}</td>
+        <td class="team">${teamCell(r.name,live)}</td>
         <td class="pt">${r.pts}</td>
         <td>${r.j}</td><td>${r.v}</td><td>${r.e}</td><td>${r.d}</td>
         <td>${r.gp}</td><td>${r.gc}</td><td class="sg">${sg}</td>

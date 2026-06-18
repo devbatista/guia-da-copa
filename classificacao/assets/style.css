@@ -88,6 +88,7 @@ header .sub{color:var(--ink-dim);font-size:15px;margin-top:8px;max-width:64ch}
 .legend i{width:12px;height:12px;border-radius:3px;flex:none}
 .legend .z-q{background:var(--q);box-shadow:inset 3px 0 0 var(--q-edge)}
 .legend .z-q3{background:var(--q3);box-shadow:inset 3px 0 0 var(--q3-edge)}
+.legend .z-live{background:var(--live);border-radius:50%}
 
 /* ---------- Grade de grupos ---------- */
 .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
@@ -99,6 +100,14 @@ header .sub{color:var(--ink-dim);font-size:15px;margin-top:8px;max-width:64ch}
 .gtag{font-family:"Saira Condensed";font-weight:700;font-size:11px;letter-spacing:.08em;text-transform:uppercase;
   color:var(--ink-dim);background:var(--board-2);border:1px solid var(--line);border-radius:999px;padding:3px 9px}
 .gtag.done{color:var(--green);border-color:color-mix(in srgb,var(--green) 45%,var(--line))}
+.gtag.live{color:var(--live);border-color:color-mix(in srgb,var(--live) 50%,var(--line));
+  display:inline-flex;align-items:center;gap:6px}
+.gtag.live::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--live);animation:live-pulse 1.4s infinite}
+@keyframes live-pulse{0%{box-shadow:0 0 0 0 rgba(255,77,77,.5)}70%{box-shadow:0 0 0 6px rgba(255,77,77,0)}100%{box-shadow:0 0 0 0 rgba(255,77,77,0)}}
+
+/* marcador de jogo em andamento ao lado da seleção (números parciais) */
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--live);flex:none;animation:live-pulse 1.4s infinite}
+.gtable tr.live td.pt{position:relative}
 
 /* tabela */
 .gtable{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
