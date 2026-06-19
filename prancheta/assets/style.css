@@ -155,6 +155,10 @@ button.verde{background:var(--green);border-color:var(--green);color:#03150d}
   font-variant-numeric:tabular-nums;min-width:26px;text-align:right}
 .draft-acoes{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;align-items:center}
 #abertas-txt{font-size:12px;opacity:.6}
+.trocas-contador{font-family:"Saira Condensed";font-weight:700;font-size:12px;letter-spacing:.04em;
+  text-transform:uppercase;color:var(--amber-ink);background:color-mix(in srgb,var(--amber-ink) 14%,transparent);
+  border:1px solid color-mix(in srgb,var(--amber-ink) 32%,transparent);border-radius:999px;padding:3px 10px;
+  font-variant-numeric:tabular-nums;white-space:nowrap}
 .aviso{color:var(--amber-ink);font-size:13px;margin-top:10px}
 
 /* ---------- RESULTADO ---------- */

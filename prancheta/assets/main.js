@@ -1,3 +1,9 @@
+/* IIFE: mantém estado/funções fora do escopo global — evita trapaça fácil pelo
+   console (ex.: estado.rerolls = 99). Não é blindagem total (DevTools sempre
+   alcança o runtime), mas barra o atalho óbvio. */
+(function(){
+"use strict";
+
 /* ============================================================================
    ①  BANCO DE DADOS
    ----------------------------------------------------------------------------
@@ -193,7 +199,7 @@ const ELENCOS = [
    posicoesAbertas() → posições que ainda têm slot vazio no nosso time.
    Regra-chave: só dá pra pescar atleta cuja posição ainda esteja vaga.
    Se o elenco sorteado não tiver nenhum compatível → reroll grátis.
-   3 trocas pagas por partida ("Trocar elenco"), com contador.
+   3 trocas pagas por montagem ("Trocar elenco") — total, não renovam por rodada — com contador.
    ============================================================================ */
 function sortearElenco(){
   return ELENCOS[Math.floor(Math.random()*ELENCOS.length)];
@@ -573,8 +579,7 @@ function escolher(jogador){
     // Onze fechado → simula a Copa
     irParaResultado();
   } else {
-    estado.rerolls = 3;        // trocas renovam a cada rodada
-    novaRodada();
+    novaRodada();              // as 3 trocas valem para a montagem inteira (não renovam)
   }
 }
 
@@ -583,6 +588,7 @@ function renderHUD(){
   const oculto = estado.modo === "Almanaque";
   $("rodada-txt").textContent  = `Rodada ${Math.min(estado.rodada,11)} de 11`;
   $("rerolls-txt").textContent = `Trocas de elenco: ${estado.rerolls}`;
+  $("trocas-contador").textContent = `${estado.rerolls}/3 trocas`;
   $("btn-trocar").disabled = estado.rerolls <= 0;
   $("barra-prog").style.width = `${((estado.rodada-1)/11)*100}%`;
 
@@ -996,3 +1002,5 @@ window.addEventListener("load", reportarAltura);
 
 /* Tudo carregado e inicializado → revela a tela (esconde o loader) */
 document.body.classList.add("ready");
+
+})();
