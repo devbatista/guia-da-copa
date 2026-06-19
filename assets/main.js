@@ -430,7 +430,8 @@ function buildGoals(m,data,teams){
   const plays=scoringPlays(data);
   const goals=plays.filter(sp=>{
     const txt=[sp.type&&sp.type.text,sp.text,sp.shortText,sp.displayText].filter(Boolean).join(' ');
-    return !txt||/(goal|gol|penalty|own goal)/i.test(txt);
+    if(/(card|cartão|cartao|substitution|substituição|substituicao|yellow|red|amarelo|vermelho)/i.test(txt)) return false;
+    return sp.scoringPlay===true||/(goal|gol|penalty|own goal)/i.test(txt);
   }).map(sp=>({
     team:playTeam(sp,teams),
     name:scorerName(sp),
