@@ -1,4 +1,4 @@
-/* ---------- canais: grade carregada de assets/transmissao.json (ver loadChannels) ---------- */
+/* ---------- canais: grade estática de assets/transmissao.js (ver applyChannels) ---------- */
 
 /* ---------- tabela embutida (di = dia: 0 = 11/jun ... 16 = 27/jun) ---------- */
 const M=[
@@ -140,7 +140,7 @@ function flag(n,after){
 /* enriquecer tabela */
 M.forEach(m=>{
   m.isBr=m.a==='Brasil'||m.b==='Brasil';
-  m.ch=[]; m.open=false; m.cazeOnly=false;   // grade real preenchida por applyChannels (transmissao.json)
+  m.ch=[]; m.open=false; m.cazeOnly=false;   // grade real preenchida por applyChannels (transmissao.js)
   const pm=m.t.match(/(\d{1,2})h(\d{2})?/); m.min=parseInt(pm[1])*60+(pm[2]?+pm[2]:0);
   const day=String(11+m.di).padStart(2,'0'), hh=String(Math.floor(m.min/60)).padStart(2,'0'), mm=String(m.min%60).padStart(2,'0');
   m.ts=Date.parse(`2026-06-${day}T${hh}:${mm}:00-03:00`);
@@ -165,7 +165,8 @@ function applyChannels(data){
     m.cazeOnly=ch.length===1;
   });
 }
-/* canais dinâmicos gerados pelo cron PHP (jogos.json) — sobrescrevem a grade estática quando disponível */
+/* canais atualizados pelo cron PHP (jogos.json, não versionado) — sobrescrevem a grade estática quando disponível.
+   O PHP já entrega a UNIÃO (grade curada + scraping), então aqui é só aplicar. */
 async function loadJogosJson(){
   try{
     const res=await fetch('jogos.json',{cache:'no-store'});
@@ -181,7 +182,6 @@ async function loadJogosJson(){
     if(n) render();
   }catch(e){ console.warn('Canais dinâmicos (jogos.json) indisponíveis, usando a grade estática:',e.message); }
 }
-
 let filter='next', query='', todayDI=-1;
 const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
 /* nomes grandes -> versão curta só p/ exibição (busca/API seguem usando o nome completo) */
@@ -532,9 +532,9 @@ $('themeToggle').addEventListener('click',()=>{
 });
 
 function reveal(){ document.body.classList.add('ready'); }
-applyChannels(typeof TRANSMISSAO!=='undefined'?TRANSMISSAO:null);   // grade estática (transmissao.js) — base offline
+applyChannels(typeof TRANSMISSAO!=='undefined'?TRANSMISSAO:null);   // grade de transmissão (assets/transmissao.js)
 render();                          // monta a tabela (ainda escondida pelo overlay)
-loadJogosJson();                   // grade dinâmica do cron (jogos.json) sobrescreve quando disponível
+loadJogosJson();                   // canais atualizados pelo cron (jogos.json) sobrescrevem quando disponível
 fetchLive().then(scheduleNext).finally(reveal);   // revela após carregar os placares
 fetchSeason();                     // ids e resultados dos demais dias (p/ estatísticas)
 setTimeout(reveal, 6000);          // fallback: nunca deixa a tela travada no "carregando"

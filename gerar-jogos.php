@@ -8,28 +8,54 @@
  * ESCOPO (importante)
  *   Este script cuida APENAS dos canais — a única informação que nenhuma API
  *   pública entrega pronta para o Brasil. A tabela de jogos (data, horário,
- *   grupo, sede) vive embutida no front-end (assets/main.js) e o placar/estatísticas
+ *   grupo, sede) vive no front-end (assets/transmissao.js) e o placar/estatística
  *   ao vivo vêm da API da ESPN, direto no navegador.
  *
- * COMO FUNCIONA
- *   1) Para cada um dos 72 jogos (lista GAMES abaixo, com o canal PADRÃO de cada),
- *      tenta sobrescrever com os canais raspados de uma página de "onde assistir".
- *   2) Se o scraping falhar para um jogo, mantém o canal padrão da lista.
- *   3) Grava jogos.json de forma atômica (arquivo temporário + rename).
+ * FONTES (atualizadas com frequência)
+ *   Raspa VÁRIAS páginas (ver SOURCES) e MESCLA o resultado: portais "onde
+ *   assistir HOJE" (atualizados diariamente, jogos do dia) + uma lista do
+ *   torneio inteiro (cobertura dos 72 jogos). Quanto mais fontes, mais
+ *   resiliente — se uma cair ou mudar de layout, as outras seguram.
  *
- * SAÍDA: { "updated_at", "source", "count", "canais": [ {home, away, channels}, ... ] }
+ * COMO FUNCIONA — e por que é SEGURO
+ *   A grade curada (defaultGames) é o PISO GARANTIDO. O scraping só pode
+ *   ACRESCENTAR canais a um jogo, NUNCA remover abaixo do piso. Isso evita o
+ *   bug clássico de raspagem em que um casamento ruim degradava o jogo (ex.:
+ *   "Escócia x Brasil" virava "só Cazé TV"). Resultado de cada jogo:
  *
- * CRON (cPanel → "Cron Jobs"), ex. a cada 6 horas:
- *   0 *\/6 * * *  /usr/bin/php /home/SEU_USUARIO/public_html/guiadacopa/gerar-jogos.php >> /home/SEU_USUARIO/cron.log 2>&1
+ *       canais = UNIÃO( grade curada , canais raspados )   + (Globo ⇒ Globoplay)
+ *
+ *   Assim, na pior hipótese (scraping falho), o JSON sai idêntico à grade
+ *   curada. Na melhor, um jogo hoje só-Cazé é PROMOVIDO quando a Globo/SBT o
+ *   pega. Custo: não detecta REMOÇÃO de canal (raríssimo) — risco aceitável
+ *   perto de nunca degradar a grade.
+ *
+ * SAÍDA: jogos.json (NÃO versionado — gerado no servidor). Formato:
+ *   { "updated_at", "source", "count", "canais": [ {home, away, channels}, ... ] }
+ *
+ * CRON (cPanel → "Cron Jobs"), DIÁRIO (ex.: todo dia às 06:00):
+ *   0 6 * * *  /usr/bin/php /home/SEU_USUARIO/public_html/guiadacopa/gerar-jogos.php >> /home/SEU_USUARIO/cron.log 2>&1
  */
 
 date_default_timezone_set('America/Sao_Paulo');
 
 /* ----------------------------- CONFIG ----------------------------- */
-// Página de onde os CANAIS são raspados. Padrão do Canaltech:
-// "Time x Time (Grupo X): 16h, Cidade. Transmissões: A, B e C."
-// Se a página mudar, troque a URL e/ou ajuste o REGEX em scrapeChannels().
-const CHANNELS_URL = 'https://canaltech.com.br/entretenimento/onde-assistir-aos-jogos-da-copa-do-mundo-2026/';
+// FONTES de canais, raspadas e MESCLADAS (união). Quanto mais fontes, mais
+// resiliente: se uma sair do ar ou mudar de layout, as outras seguram.
+// A extração é ANCORADA nos nomes dos jogos (ver extractFromText), então NÃO
+// depende do layout específico de cada página — basta a página citar
+// "Time x Time" seguido dos canais. Para adicionar uma fonte, inclua a URL aqui.
+const SOURCES = [
+    // O Tempo — página "onde assistir HOJE", atualizada diariamente.
+    // Formato: "14h: Argentina x Áustria - Globo, Sportv, ge tv, Globoplay, Cazé TV, SBT e N Sports"
+    'https://www.otempo.com.br/sports/copa-do-mundo/onde-assistir-jogos-hoje',
+    // Doentes por Futebol — guia de jogos do dia, atualizado diariamente.
+    // Formato: "Argentina x Áustria 📺 SBT; GLOBO; GE TV (Globoplay); SPORTV; CAZÉ TV; NSPORTS"
+    'https://doentesporfutebol.com.br/guiadejogos/',
+    // Canaltech — lista do torneio inteiro (cobre os jogos que não são "de hoje").
+    // Formato: "Time x Time (Grupo X): 16h, Cidade. Transmissões: A, B e C."
+    'https://canaltech.com.br/entretenimento/onde-assistir-aos-jogos-da-copa-do-mundo-2026/',
+];
 
 // jogos.json precisa ficar acessível pela web, ao lado do index.html.
 $OUTPUT_FILE = __DIR__ . '/jogos.json';
@@ -82,27 +108,31 @@ function pairKey(string $a, string $b): string {
     return implode('|', $p);
 }
 
-// normaliza nomes de canal raspados para uma forma canônica
-function canonChannel(string $raw): ?string {
-    $n = norm($raw);
-    $map = [
-        'caze tv'=>'Cazé TV','cazetv'=>'Cazé TV','caze'=>'Cazé TV',
-        'globoplay'=>'Globoplay',
-        'globo'=>'Globo','tv globo'=>'Globo',
-        'sbt'=>'SBT',
-        'sportv'=>'SporTV',
-        'ge tv'=>'ge tv','getv'=>'ge tv',
-        'n sports'=>'N Sports','nsports'=>'N Sports',
+// Detecta TODOS os canais citados num trecho de texto, por assinatura (regex
+// com fronteira de palavra). Robusto a separadores e a combos como
+// "GE TV (Globoplay)". A ordem importa para o \b: 'globoplay' antes de 'globo',
+// e '\bglobo\b' NÃO casa dentro de "globoplay".
+function channelsInText(string $text): array {
+    $n = norm($text);
+    $sigs = [
+        'Cazé TV'   => '/\bcaze(\s*tv)?\b/u',
+        'Globoplay' => '/\bglobo\s*play\b/u',
+        'Globo'     => '/\bglobo\b/u',
+        'SBT'       => '/\bsbt\b/u',
+        'SporTV'    => '/\bsportv\b/u',
+        'ge tv'     => '/\bge\s*tv\b/u',
+        'N Sports'  => '/\bn\s*sports\b/u',
     ];
-    foreach ($map as $needle => $canon) {
-        if (strpos($n, $needle) !== false) return $canon;
+    $out = [];
+    foreach ($sigs as $canon => $re) {
+        if (preg_match($re, $n)) $out[] = $canon;
     }
-    return null; // ignora ruído
+    return $out;
 }
 
 /* ----------------- TABELA DE JOGOS + CANAL PADRÃO -----------------
- * Espelha a grade do front-end (assets/transmissao.js). É o fallback usado
- * quando o scraping não encontra o jogo. Mantenha as duas em sincronia. */
+ * Espelha a grade do front-end (assets/transmissao.js). É o PISO GARANTIDO:
+ * o scraping só acrescenta sobre isto, nunca remove. Mantenha as duas em sincronia. */
 function defaultGames(): array {
     return [
         ['México', 'África do Sul', ['Globo', 'SBT', 'SporTV', 'Globoplay', 'ge tv', 'N Sports', 'Cazé TV']],
@@ -180,50 +210,89 @@ function defaultGames(): array {
     ];
 }
 
-/* ----------------- SCRAPING DOS CANAIS ----------------- */
-function scrapeChannels(): array {
-    $html = httpGet(CHANNELS_URL);
-    if ($html === null) { logLine('AVISO: scraping falhou; usando os canais padrão.'); return []; }
-
-    // HTML -> texto corrido (resiliente a mudanças de marcação)
-    $text = preg_replace('/\s+/', ' ', strip_tags($html));
-
-    // "Time x Time (Grupo X): ... Transmiss(ão|ões): canal, canal e canal."
-    $re = '/([\p{L}\.\s]+?)\s+x\s+([\p{L}\.\s]+?)\s*\(Grupo\s+([A-L])\)[^:]*:[^.]*?\.?\s*'
-        . 'Transmiss[ãõ]o?e?s?:\s*([^.\n•·]+)/u';
-
+/* ----------------- EXTRAÇÃO ANCORADA NOS JOGOS -----------------
+ * Em vez de confiar no layout de cada fonte, ANCORAMOS nos nomes conhecidos:
+ * para cada jogo da grade, procuramos "casa x visitante" (em qualquer ordem)
+ * no texto e lemos os canais numa JANELA logo após o confronto, cortando na
+ * próxima ocorrência de " x " (= próximo jogo) para não vazar canais alheios.
+ * Funciona igual em qualquer página que cite "Time x Time" seguido dos canais. */
+function extractFromText(string $text, array $games): array {
+    $ntext = norm($text);
     $found = [];
-    if (preg_match_all($re, $text, $matches, PREG_SET_ORDER)) {
-        foreach ($matches as $g) {
-            $home = trim($g[1]); $away = trim($g[2]);
-            $channels = [];
-            foreach (preg_split('/,|\be\b|\/|·|•/u', $g[4]) as $c) {
-                $canon = canonChannel($c);
-                if ($canon && !in_array($canon, $channels, true)) $channels[] = $canon;
-            }
-            if ($channels) $found[pairKey($home, $away)] = $channels;
+    foreach ($games as [$home, $away, $piso]) {
+        $h = norm($home); $a = norm($away);
+        $pos = false; $needleLen = 0;
+        foreach (["$h x $a", "$a x $h"] as $cand) {
+            $p = mb_strpos($ntext, $cand);
+            if ($p !== false) { $pos = $p; $needleLen = mb_strlen($cand); break; }
         }
+        if ($pos === false) continue;
+
+        $window = mb_substr($ntext, $pos + $needleLen, 300);
+        $cut = mb_strpos($window, ' x ');           // próximo confronto -> para aqui
+        if ($cut !== false) $window = mb_substr($window, 0, $cut);
+
+        $channels = channelsInText($window);
+        if ($channels) $found[pairKey($home, $away)] = $channels;
     }
-    logLine('Scraping: canais encontrados para ' . count($found) . ' jogos.');
     return $found;
 }
 
-/* ----------------- MONTA O RESULTADO ----------------- */
+/* ----------------- SCRAPING MULTI-FONTE (MESCLA) ----------------- */
+function scrapeChannels(array $games): array {
+    $merged = [];
+    foreach (SOURCES as $url) {
+        $html = httpGet($url);
+        if ($html === null) { logLine("AVISO: fonte indisponível, pulando: $url"); continue; }
+
+        // HTML -> texto corrido (resiliente a mudanças de marcação)
+        $text = preg_replace('/\s+/', ' ', strip_tags($html));
+        $found = extractFromText($text, $games);
+
+        $host = parse_url($url, PHP_URL_HOST) ?: $url;
+        logLine("Fonte $host: canais encontrados para " . count($found) . ' jogos.');
+
+        // mescla (união) entre fontes
+        foreach ($found as $key => $chs) {
+            foreach ($chs as $c) {
+                if (!isset($merged[$key])) $merged[$key] = [];
+                if (!in_array($c, $merged[$key], true)) $merged[$key][] = $c;
+            }
+        }
+    }
+    logLine('Mesclado de ' . count(SOURCES) . ' fontes: dados para ' . count($merged) . ' jogos.');
+    return $merged;
+}
+
+/* ----------------- MONTA O RESULTADO (UNIÃO SEGURA) ----------------- */
 function build(): array {
-    $scraped = scrapeChannels();
-    $result = [];
-    $usados_scrape = 0;
-    foreach (defaultGames() as [$home, $away, $padrao]) {
+    $games   = defaultGames();
+    $scraped = scrapeChannels($games);
+    $result  = [];
+    $promovidos = 0;
+    foreach ($games as [$home, $away, $piso]) {
         $key = pairKey($home, $away);
-        if (isset($scraped[$key])) { $channels = $scraped[$key]; $usados_scrape++; }
-        else                       { $channels = $padrao; }
+
+        // União: começa pelo piso curado e só ACRESCENTA o que o scraping trouxer.
+        $channels = $piso;
+        if (isset($scraped[$key])) {
+            foreach ($scraped[$key] as $c) {
+                if (!in_array($c, $channels, true)) $channels[] = $c;
+            }
+        }
+        // Invariante da grade: Globoplay sempre acompanha a Globo.
+        if (in_array('Globo', $channels, true) && !in_array('Globoplay', $channels, true)) {
+            $channels[] = 'Globoplay';
+        }
+        if (count($channels) > count($piso)) $promovidos++;
+
         $result[] = [
             'home'     => $home,
             'away'     => $away,
             'channels' => array_values($channels),
         ];
     }
-    logLine('Montado: ' . count($result) . " jogos ($usados_scrape do scraping, o resto do padrão).");
+    logLine('Montado: ' . count($result) . " jogos ($promovidos promovidos pelo scraping; o resto = grade curada).");
     return $result;
 }
 
@@ -235,7 +304,7 @@ function main(): void {
 
     $payload = [
         'updated_at' => date('c'),
-        'source'     => ['channels' => CHANNELS_URL],
+        'source'     => ['channels' => SOURCES],
         'count'      => count($canais),
         'canais'     => $canais,
     ];
