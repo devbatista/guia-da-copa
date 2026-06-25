@@ -1,0 +1,150 @@
+/* ============================================================
+   Mata-Mata — chaveamento
+   Mesmos tokens do Guia da Copa (assets/style.css). CSS isolado.
+   ============================================================ */
+:root{
+  --board:#0c1620;--board-2:#11202d;--panel:#16293a;--panel-hi:#1b3144;
+  --line:#26425a;--line-hi:#3a607e;--ink:#e8eef3;--ink-dim:#94aabb;
+  --amber:#f6c544;--amber-ink:var(--amber);--br-yellow:#ffd400;
+  --green:#5fd08a;--live:#ff4d4d;--glow:#1a3247;--radius:13px;
+  color-scheme:dark;
+}
+[data-theme="light"]{
+  --board:#eef2f6;--board-2:#ffffff;--panel:#ffffff;--panel-hi:#f3f8fb;
+  --line:#d7e1ea;--line-hi:#aabccd;--ink:#16242f;--ink-dim:#5d7488;
+  --amber:#f0b400;--amber-ink:#9a6a00;
+  --green:#1f9d5b;--live:#e23b3b;--glow:#dbe9f6;
+  color-scheme:light;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:radial-gradient(1200px 500px at 50% -120px,var(--glow) 0%,transparent 70%),var(--board);
+  color:var(--ink);font-family:"Saira",system-ui,sans-serif;line-height:1.45;
+  padding:20px 16px 80px;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;position:relative}
+a{color:var(--amber-ink)}
+
+/* overlay de carregamento */
+#loader{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+  background:radial-gradient(1200px 500px at 50% -120px,var(--glow) 0%,transparent 70%),var(--board)}
+#loader .spinner{width:36px;height:36px;border:3px solid var(--line);border-top-color:var(--amber);border-radius:50%;animation:spin 1s linear infinite}
+#loader .loading-txt{font-family:"Saira Condensed";font-weight:700;font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-dim)}
+body.ready #loader{opacity:0;visibility:hidden;transition:opacity .35s ease,visibility 0s .35s}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Voltar ao Guia */
+.voltar-guia{display:inline-flex;align-items:center;gap:8px;margin-bottom:16px;
+  font-family:"Saira Condensed";font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.04em;
+  text-decoration:none;color:var(--ink);background:var(--board-2);border:1px solid var(--line);border-radius:999px;
+  padding:8px 14px;transition:.15s}
+.voltar-guia:hover{border-color:var(--line-hi);color:var(--amber-ink)}
+.voltar-guia svg{width:15px;height:15px;flex:none}
+
+/* ---------- Cabeçalho ---------- */
+header{position:relative;margin-bottom:22px}
+.brand{display:flex;align-items:center;gap:16px}
+.brand > svg{width:50px;height:65px;flex:none}
+.eyebrow{font-family:"Saira Condensed";font-weight:700;letter-spacing:.22em;text-transform:uppercase;
+  font-size:12px;color:var(--amber-ink);display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.eyebrow::before{content:"";height:1px;flex:0 0 26px;background:var(--amber);opacity:.7}
+.eyebrow::after{content:"";height:1px;flex:1 1 auto;background:var(--amber);opacity:.25}
+header h1{font-family:"Saira Condensed";font-weight:800;font-size:clamp(30px,7vw,46px);line-height:.94;
+  text-transform:uppercase;letter-spacing:-.01em}
+header h1 span{color:var(--amber-ink)}
+header .sub{color:var(--ink-dim);font-size:15px;margin-top:8px;max-width:64ch}
+
+/* Botão de tema */
+.theme-toggle{position:absolute;top:0;right:0;z-index:2;cursor:pointer;
+  font-family:"Saira Condensed";font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.04em;
+  color:var(--ink);background:var(--board-2);border:1px solid var(--line);border-radius:999px;
+  padding:8px 14px;display:inline-flex;align-items:center;gap:8px;transition:.15s}
+.theme-toggle:hover{border-color:var(--line-hi);color:var(--amber-ink)}
+.theme-toggle svg{width:15px;height:15px;flex:none}
+.theme-toggle .ic-moon{display:none}
+[data-theme="light"] .theme-toggle .ic-sun{display:none}
+[data-theme="light"] .theme-toggle .ic-moon{display:inline}
+
+/* Barra de status ao vivo (igual ao guia) */
+.live-bar{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;margin-top:16px}
+.src{font-family:"Saira Condensed";font-weight:600;font-size:13px;color:var(--ink-dim);display:inline-flex;align-items:center;gap:7px}
+.src .dot{width:8px;height:8px;border-radius:50%;background:var(--ink-dim);flex:none}
+.src.ok .dot{background:var(--green);animation:pulse 2.4s infinite}
+.src.off .dot{background:#7e93a6}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(95,208,138,.45)}70%{box-shadow:0 0 0 8px rgba(95,208,138,0)}100%{box-shadow:0 0 0 0 rgba(95,208,138,0)}}
+.refresh{font-family:"Saira Condensed";font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.04em;
+  cursor:pointer;color:var(--ink);background:var(--board-2);border:1px solid var(--line);border-radius:999px;
+  padding:7px 14px;display:inline-flex;align-items:center;gap:7px;transition:.15s}
+.refresh:hover{border-color:var(--line-hi)}
+.refresh:disabled{opacity:.5;cursor:default}
+.refresh svg{width:13px;height:13px}
+.refresh.spin svg{animation:spin 1s linear infinite}
+
+/* Legenda */
+.legend{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:14px;padding-top:14px;border-top:1px solid var(--line);
+  font-size:13px;color:var(--ink-dim)}
+.legend .lg{display:inline-flex;align-items:center;gap:7px}
+.legend i{width:12px;height:12px;border-radius:3px;flex:none}
+.legend .z-win{background:color-mix(in srgb,var(--green) 22%,transparent);box-shadow:inset 3px 0 0 var(--green)}
+.legend .z-live{background:var(--live);border-radius:50%}
+.legend .z-lbl{background:repeating-linear-gradient(45deg,var(--line),var(--line) 3px,transparent 3px,transparent 6px)}
+
+/* ---------- Painel dos 3º classificados ---------- */
+.thirds{background:linear-gradient(180deg,var(--panel-hi),var(--board-2));border:1px solid var(--line);
+  border-radius:var(--radius);padding:14px 16px;margin-bottom:20px}
+.thirds .thead{font-family:"Saira Condensed";font-weight:800;font-size:14px;text-transform:uppercase;letter-spacing:.05em;
+  color:var(--amber-ink);margin-bottom:10px}
+.thirds .tchips{display:flex;flex-wrap:wrap;gap:8px}
+.thirds .tchip{display:inline-flex;align-items:center;gap:7px;background:var(--board-2);border:1px solid var(--line);
+  border-radius:999px;padding:5px 10px;font-size:13px;font-weight:600}
+.thirds .tchip i{font-style:normal;font-family:"Saira Condensed";font-weight:700;font-size:11px;color:var(--ink-dim)}
+.thirds .tnote{margin-top:10px;font-size:12.5px;color:var(--ink-dim)}
+
+/* ---------- Bracket (colunas por fase) ---------- */
+.bracket{display:flex;gap:16px;overflow-x:auto;padding-bottom:14px;-webkit-overflow-scrolling:touch}
+.col{flex:0 0 232px;display:flex;flex-direction:column;min-width:0}
+.col-head{font-family:"Saira Condensed";font-weight:800;font-size:14px;text-transform:uppercase;letter-spacing:.06em;
+  color:var(--amber-ink);padding:0 2px 8px;border-bottom:1px solid var(--line);position:sticky;top:0;
+  background:var(--board);z-index:1}
+.col-body{flex:1;display:flex;flex-direction:column;justify-content:space-around;gap:12px;padding-top:14px}
+
+.tie{background:linear-gradient(180deg,var(--panel-hi),var(--board-2));border:1px solid var(--line);
+  border-radius:var(--radius);overflow:hidden}
+.tie.live{border-color:color-mix(in srgb,var(--live) 50%,var(--line))}
+.tie-meta{font-family:"Saira Condensed";font-weight:600;font-size:10.5px;letter-spacing:.03em;text-transform:uppercase;
+  color:var(--ink-dim);padding:6px 10px;border-bottom:1px solid color-mix(in srgb,var(--line) 60%,transparent);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tie-meta .lv{color:var(--live);font-weight:700}
+.tie .row{display:flex;align-items:center;gap:8px;padding:9px 10px;font-size:13.5px;min-height:38px}
+.tie .row + .row{border-top:1px solid color-mix(in srgb,var(--line) 55%,transparent)}
+.tie .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.tie .nm.lbl{color:var(--ink-dim);font-weight:500;font-size:12.5px}
+.tie .nm.br-name{color:var(--br-yellow);font-weight:700}
+[data-theme="light"] .tie .nm.br-name{color:#0f7a44}
+.tie .sc{font-family:"Saira Condensed";font-weight:800;font-size:16px;min-width:15px;text-align:center}
+.tie .pens{font-size:10px;color:var(--ink-dim);margin-left:1px;align-self:flex-start;margin-top:1px}
+.tie .row.win .nm{font-weight:800}
+.tie .row.win .sc{color:var(--green)}
+.tie .row.win{background:color-mix(in srgb,var(--green) 9%,transparent)}
+.tie .row.out{opacity:.5}
+
+/* disputa de 3º lugar — cartão isolado abaixo da árvore */
+.bronze{margin-top:18px;max-width:232px}
+.bronze-head{font-family:"Saira Condensed";font-weight:800;font-size:13px;text-transform:uppercase;letter-spacing:.05em;
+  color:var(--ink-dim);margin-bottom:8px}
+
+/* bandeiras */
+img.flag{width:1.3em;height:auto;border-radius:2px;box-shadow:0 0 0 1px rgba(0,0,0,.3);flex:none}
+.flag-emoji{font-size:1.1em}
+
+footer{margin-top:26px;padding-top:16px;border-top:1px solid var(--line);
+  color:var(--ink-dim);font-size:12.5px;line-height:1.6}
+footer .credit{margin-top:6px}
+footer a{text-decoration:none}
+footer a:hover{text-decoration:underline}
+
+/* ---------- mobile ---------- */
+@media (max-width:760px){
+  .theme-toggle{position:static;margin-bottom:14px}
+  header{padding-top:0}
+  .col{flex-basis:200px}
+}
