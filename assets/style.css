@@ -259,4 +259,13 @@ footer .credit a:hover{text-decoration:underline}
   .badge{padding:2px 6px}
   .pill{font-size:11.5px;padding:3px 8px}
 }
+/* ---------- mata-mata na lista cronológica ---------- */
+.match.ko{border-left-color:var(--line-hi)}
+.match.ko.is-br{border-left-color:var(--br-yellow)}
+.badge-ko{border-color:var(--line-hi);color:var(--amber-ink)}
+/* slot ainda indefinido (ex.: "1º Grupo E", "Vencedor #74") */
+.team-name.ko-ph .team-label{color:var(--ink-dim);font-style:italic;font-weight:500}
+/* pênaltis ao lado do placar */
+.pens{font-family:"Saira Condensed";font-weight:700;font-size:.78em;color:var(--ink-dim);font-variant-numeric:tabular-nums}
+
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto}}

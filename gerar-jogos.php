@@ -30,8 +30,17 @@
  *   pega. Custo: não detecta REMOÇÃO de canal (raríssimo) — risco aceitável
  *   perto de nunca degradar a grade.
  *
+ * MATA-MATA (jogos 73–104)
+ *   Os times só se definem fase a fase, então não há grade fixa. Em vez de
+ *   ancorar em pares conhecidos, fazemos uma extração GENÉRICA: varremos as
+ *   mesmas fontes "de hoje" e captamos qualquer "Time x Time" entre seleções
+ *   conhecidas que NÃO seja um confronto de grupo, com Cazé TV como piso. Um
+ *   par espúrio é inofensivo: o front-end só exibe canais de um confronto de
+ *   mata-mata que de fato exista no chaveamento resolvido pela ESPN.
+ *
  * SAÍDA: jogos.json (NÃO versionado — gerado no servidor). Formato:
- *   { "updated_at", "source", "count", "canais": [ {home, away, channels}, ... ] }
+ *   { "updated_at", "source", "count",
+ *     "canais": [ {home, away, channels, stage: "grupos"|"mata-mata"}, ... ] }
  *
  * CRON (cPanel → "Cron Jobs"), DIÁRIO (ex.: todo dia às 06:00):
  *   0 6 * * *  /usr/bin/php /home/SEU_USUARIO/public_html/guiadacopa/gerar-jogos.php >> /home/SEU_USUARIO/cron.log 2>&1
@@ -238,61 +247,107 @@ function extractFromText(string $text, array $games): array {
     return $found;
 }
 
-/* ----------------- SCRAPING MULTI-FONTE (MESCLA) ----------------- */
-function scrapeChannels(array $games): array {
-    $merged = [];
+/* ----------------- MATA-MATA: PARES CANDIDATOS -----------------
+ * Os times do mata-mata só se definem fase a fase, então não há grade fixa.
+ * Geramos TODOS os pares possíveis entre as 48 seleções que NÃO são um
+ * confronto de grupo (esses já estão em defaultGames) e deixamos a extração
+ * genérica achar, nas fontes "de hoje", os que realmente estão sendo jogados.
+ * Um par espúrio é inofensivo: o front-end só exibe canais de um confronto de
+ * mata-mata que de fato exista no chaveamento resolvido pela ESPN. */
+function uniqueTeams(array $games): array {
+    $set = [];
+    foreach ($games as [$home, $away,]) { $set[$home] = true; $set[$away] = true; }
+    return array_keys($set);
+}
+function knockoutCandidates(array $games): array {
+    $teams = uniqueTeams($games);
+    $groupPairs = [];
+    foreach ($games as [$home, $away,]) $groupPairs[pairKey($home, $away)] = true;
+    $cands = [];
+    for ($i = 0; $i < count($teams); $i++) {
+        for ($j = $i + 1; $j < count($teams); $j++) {
+            $key = pairKey($teams[$i], $teams[$j]);
+            if (isset($groupPairs[$key])) continue;            // já coberto pela grade de grupos
+            $cands[] = [$teams[$i], $teams[$j], []];
+        }
+    }
+    return $cands;
+}
+
+/* mescla (união) de canais por confronto: $dst[pairKey] += $found[pairKey] */
+function mergeChannels(array &$dst, array $found): void {
+    foreach ($found as $key => $chs) {
+        if (!isset($dst[$key])) $dst[$key] = [];
+        foreach ($chs as $c) if (!in_array($c, $dst[$key], true)) $dst[$key][] = $c;
+    }
+}
+
+/* aplica a invariante da grade: Globoplay sempre acompanha a Globo */
+function withGloboplay(array $channels): array {
+    if (in_array('Globo', $channels, true) && !in_array('Globoplay', $channels, true)) $channels[] = 'Globoplay';
+    return array_values($channels);
+}
+
+/* ----------------- MONTA O RESULTADO (UNIÃO SEGURA) -----------------
+ * Baixa cada fonte UMA vez e faz duas leituras sobre o mesmo texto:
+ *   - grupos    : extração ANCORADA nos 72 pares (piso curado garantido)
+ *   - mata-mata : extração GENÉRICA dos pares não-grupo citados no dia (piso Cazé) */
+function build(): array {
+    $games = defaultGames();
+    $cands = knockoutCandidates($games);
+
+    $groupMerged = []; $koMerged = [];
     foreach (SOURCES as $url) {
         $html = httpGet($url);
         if ($html === null) { logLine("AVISO: fonte indisponível, pulando: $url"); continue; }
 
         // HTML -> texto corrido (resiliente a mudanças de marcação)
-        $text = preg_replace('/\s+/', ' ', strip_tags($html));
-        $found = extractFromText($text, $games);
+        $text  = preg_replace('/\s+/', ' ', strip_tags($html));
+        $ntext = norm($text);
+
+        // só testa pares de mata-mata cujos DOIS times aparecem no texto (corta milhares de buscas)
+        $present = [];
+        foreach (uniqueTeams($games) as $t) if (mb_strpos($ntext, norm($t)) !== false) $present[$t] = true;
+        $candsHere = array_values(array_filter($cands, fn($c) => isset($present[$c[0]]) && isset($present[$c[1]])));
+
+        $g = extractFromText($text, $games);
+        $k = extractFromText($text, $candsHere);
+        mergeChannels($groupMerged, $g);
+        mergeChannels($koMerged, $k);
 
         $host = parse_url($url, PHP_URL_HOST) ?: $url;
-        logLine("Fonte $host: canais encontrados para " . count($found) . ' jogos.');
-
-        // mescla (união) entre fontes
-        foreach ($found as $key => $chs) {
-            foreach ($chs as $c) {
-                if (!isset($merged[$key])) $merged[$key] = [];
-                if (!in_array($c, $merged[$key], true)) $merged[$key][] = $c;
-            }
-        }
+        logLine("Fonte $host: grupos p/ " . count($g) . ' jogo(s), mata-mata p/ ' . count($k) . ' confronto(s).');
     }
-    logLine('Mesclado de ' . count(SOURCES) . ' fontes: dados para ' . count($merged) . ' jogos.');
-    return $merged;
-}
+    logLine('Mesclado de ' . count(SOURCES) . ' fontes: grupos=' . count($groupMerged) . ', mata-mata=' . count($koMerged) . '.');
 
-/* ----------------- MONTA O RESULTADO (UNIÃO SEGURA) ----------------- */
-function build(): array {
-    $games   = defaultGames();
-    $scraped = scrapeChannels($games);
-    $result  = [];
+    $result = [];
+
+    // --- grupos: piso curado + união do scraping ---
     $promovidos = 0;
     foreach ($games as [$home, $away, $piso]) {
         $key = pairKey($home, $away);
-
-        // União: começa pelo piso curado e só ACRESCENTA o que o scraping trouxer.
         $channels = $piso;
-        if (isset($scraped[$key])) {
-            foreach ($scraped[$key] as $c) {
-                if (!in_array($c, $channels, true)) $channels[] = $c;
-            }
-        }
-        // Invariante da grade: Globoplay sempre acompanha a Globo.
-        if (in_array('Globo', $channels, true) && !in_array('Globoplay', $channels, true)) {
-            $channels[] = 'Globoplay';
-        }
+        if (isset($groupMerged[$key])) foreach ($groupMerged[$key] as $c) if (!in_array($c, $channels, true)) $channels[] = $c;
+        $channels = withGloboplay($channels);
         if (count($channels) > count($piso)) $promovidos++;
-
-        $result[] = [
-            'home'     => $home,
-            'away'     => $away,
-            'channels' => array_values($channels),
-        ];
+        $result[] = ['home' => $home, 'away' => $away, 'channels' => $channels, 'stage' => 'grupos'];
     }
-    logLine('Montado: ' . count($result) . " jogos ($promovidos promovidos pelo scraping; o resto = grade curada).");
+    logLine('Montado (grupos): ' . count($games) . " jogos ($promovidos promovidos pelo scraping; o resto = grade curada).");
+
+    // --- mata-mata: piso Cazé + união do scraping genérico (só os pares achados nas fontes) ---
+    $nameByKey = [];
+    foreach ($cands as [$h, $a,]) $nameByKey[pairKey($h, $a)] = [$h, $a];
+    $ko = 0;
+    foreach ($koMerged as $key => $chs) {
+        if (!isset($nameByKey[$key])) continue;
+        [$h, $a] = $nameByKey[$key];
+        $channels = ['Cazé TV'];                                  // piso do mata-mata: Cazé transmite todos
+        foreach ($chs as $c) if (!in_array($c, $channels, true)) $channels[] = $c;
+        $result[] = ['home' => $h, 'away' => $a, 'channels' => withGloboplay($channels), 'stage' => 'mata-mata'];
+        $ko++;
+    }
+    logLine("Montado (mata-mata): $ko confronto(s) com canais raspados das fontes do dia.");
+
     return $result;
 }
 
