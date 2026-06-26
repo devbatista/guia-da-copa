@@ -64,7 +64,7 @@
       <div>
         <div class="eyebrow">Guia da Copa 2026</div>
         <h1>Mata-<span>Mata</span></h1>
-        <p class="sub">O chaveamento da Rodada de 32 até a final. Os classificados entram sozinhos conforme os grupos fecham e os vencedores avançam na árvore.</p>
+        <p class="sub">Deslize entre as fases — da Rodada de 32 à final. Os classificados entram sozinhos conforme os grupos fecham e os vencedores avançam.</p>
       </div>
     </div>
 
@@ -85,9 +85,12 @@
 
   <section id="thirds" class="thirds" style="display:none"></section>
 
-  <main id="bracket" class="bracket" aria-label="Chaveamento do mata-mata"></main>
-
-  <section id="bronze" class="bronze" aria-label="Disputa de terceiro lugar"></section>
+  <main class="mm" aria-label="Chaveamento do mata-mata">
+    <div class="mm-tabs" id="mmTabs" role="tablist" aria-label="Fases do mata-mata"></div>
+    <div class="mm-stage">
+      <div class="mm-viewport" id="mmViewport"><div class="mm-track" id="mmTrack"></div></div>
+    </div>
+  </main>
 
   <footer>
     <div>Placares: API pública da ESPN · Grade do mata-mata e alocação dos melhores 3º colocados conforme o regulamento da FIFA (Copa do Mundo 2026).</div>

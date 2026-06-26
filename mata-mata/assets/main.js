@@ -201,6 +201,10 @@ const PHASES=[
   {ph:'sf',   name:'Semifinais'},
   {ph:'final',name:'Final'},
 ];
+/* NEXT[idDoJogo] = id do jogo da fase seguinte que ele alimenta (via slot 'W##').
+   Os dois jogos que apontam pro mesmo NEXT são o "par" cujos vencedores se enfrentam —
+   usado só pra agrupá-los (espaço menor dentro do par, maior entre pares). */
+const NEXT={}; KNOCKOUT.forEach(m=>['h','a'].forEach(side=>{ const s=m[side]; if(s[0]==='W') NEXT[+s.slice(1)]=m.id; }));
 
 /* ------------------------------------------------------------
    Alocação dos 8 melhores 3º (FIFA, Anexo C — 495 combinações).
@@ -314,20 +318,74 @@ function tieCard(m,ctx){
     ${top.html}${bot.html}
   </div>`;
 }
+/* agrupa os jogos de uma fase pelo confronto que alimentam na fase seguinte (NEXT),
+   só pra renderizar em PARES — espaço menor dentro do par, maior entre pares.
+   A Final fica num par de um jogo só. */
+function pairsHTML(ties,ctx){
+  const groups=new Map();
+  ties.forEach(m=>{ const k=NEXT[m.id]??('solo'+m.id); if(!groups.has(k)) groups.set(k,[]); groups.get(k).push(m); });
+  let out='';
+  for(const gms of groups.values()) out+=`<div class="mm-pair">${gms.map(m=>tieCard(m,ctx)).join('')}</div>`;
+  return out;
+}
+/* ---------- carrossel por fase ---------- */
+let mmActive=-1;   // fase ativa (-1 = ainda não definida; escolhida na 1ª render)
+/* fase decidida = todos os confrontos (fora o 3º lugar) já têm vencedor */
+function phaseDecided(ph,ctx){ return KNOCKOUT.filter(m=>m.ph===ph&&!m.third).every(m=>ctx.winnerOf[m.id]); }
+/* ordem dos slides: as 5 fases do bracket, com o 3º lugar logo ANTES da Final */
+function slideDefs(){
+  const defs=[];
+  PHASES.forEach(p=>{
+    if(p.ph==='final') defs.push({third:true,name:'3º lugar'});
+    defs.push({ph:p.ph,name:p.name});
+  });
+  return defs;
+}
+/* fase padrão ao abrir: a primeira ainda não decidida (= fase atual do torneio); se tudo decidido, a Final.
+   O 3º lugar é pulado nessa escolha (só é acessado por aba/swipe). */
+function defaultPhase(ctx){
+  const defs=slideDefs();
+  for(let i=0;i<defs.length;i++){ if(defs[i].third) continue; if(!phaseDecided(defs[i].ph,ctx)) return i; }
+  return defs.length-1;
+}
+function mmApply(){
+  const track=$('mmTrack'); if(!track) return;
+  const slides=[...track.children], last=slides.length-1;
+  mmActive=Math.max(0,Math.min(mmActive,last));
+  slides.forEach((s,i)=>{
+    s.style.transform=`translateX(${(i-mmActive)*100}%)`;
+    s.setAttribute('aria-hidden', i!==mmActive);
+  });
+  const active=slides[mmActive];
+  if(active) $('mmViewport').style.height=active.offsetHeight+'px';
+  [...$('mmTabs').children].forEach((t,i)=>{
+    t.classList.toggle('active',i===mmActive);
+    t.setAttribute('aria-selected',i===mmActive);
+  });
+}
+function mmGo(i){ mmActive=i; mmApply(); }
+
 function render(){
   const ctx=buildContext();
   propagate(ctx);
-  let html='';
-  for(const p of PHASES){
-    const ties=KNOCKOUT.filter(m=>m.ph===p.ph && !m.third);   // 3º lugar fica fora da coluna (não desalinha a final)
-    const body=ties.map(m=>tieCard(m,ctx)).join('');
-    html+=`<div class="col col-${p.ph}"><div class="col-head">${p.name}</div><div class="col-body">${body}</div></div>`;
-  }
-  $('bracket').innerHTML=html;
 
-  /* disputa de 3º lugar — cartão à parte, abaixo da árvore */
-  const bronze=KNOCKOUT.find(m=>m.third);
-  $('bronze').innerHTML=`<div class="bronze-head">Disputa de 3º lugar</div>${tieCard(bronze,ctx)}`;
+  let tabs='', slides='';
+  slideDefs().forEach((d,i)=>{
+    if(d.third){                                    // disputa de 3º lugar — slide próprio, antes da Final
+      const bronze=KNOCKOUT.find(m=>m.third);
+      tabs+=`<button class="mm-tab" type="button" role="tab" data-i="${i}">3º lugar</button>`;
+      slides+=`<div class="mm-slide" role="tabpanel" data-ph="third"><div class="mm-grid"><div class="mm-pair">${tieCard(bronze,ctx)}</div></div></div>`;
+    }else{
+      const ties=KNOCKOUT.filter(m=>m.ph===d.ph && !m.third);
+      tabs+=`<button class="mm-tab" type="button" role="tab" data-i="${i}">${d.name}<span class="mm-tab-n">${ties.length}</span></button>`;
+      slides+=`<div class="mm-slide" role="tabpanel" data-ph="${d.ph}"><div class="mm-grid">${pairsHTML(ties,ctx)}</div></div>`;
+    }
+  });
+  $('mmTabs').innerHTML=tabs;
+  $('mmTrack').innerHTML=slides;
+
+  if(mmActive<0) mmActive=defaultPhase(ctx);   // só na 1ª render; navegação do usuário é preservada
+  mmApply();
 
   /* painel dos 3º classificados */
   const tp=$('thirds');
@@ -383,6 +441,21 @@ function scheduleNext(){
 }
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden) fetchScores(true); });
 $('refresh').addEventListener('click',()=>fetchScores());
+
+/* ---------- navegação do carrossel (abas + swipe + resize) ---------- */
+$('mmTabs').addEventListener('click',e=>{ const b=e.target.closest('.mm-tab'); if(b) mmGo(+b.dataset.i); });
+(()=>{                                   // swipe horizontal (com guarda vertical p/ não atrapalhar o scroll)
+  const vp=$('mmViewport'); let x=null,y=null;
+  vp.addEventListener('touchstart',e=>{ x=e.touches[0].clientX; y=e.touches[0].clientY; },{passive:true});
+  vp.addEventListener('touchend',e=>{
+    if(x==null) return;
+    const dx=e.changedTouches[0].clientX-x, dy=e.changedTouches[0].clientY-y;
+    if(Math.abs(dx)>50 && Math.abs(dx)>Math.abs(dy)*1.4) mmGo(mmActive+(dx<0?1:-1));
+    x=y=null;
+  },{passive:true});
+})();
+let mmResizeT=null;
+window.addEventListener('resize',()=>{ clearTimeout(mmResizeT); mmResizeT=setTimeout(mmApply,120); });
 
 /* ---------- tema claro / escuro (persistente, igual ao guia) ---------- */
 $('themeToggle').addEventListener('click',()=>{

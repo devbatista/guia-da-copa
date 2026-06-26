@@ -21,7 +21,7 @@ html{scroll-behavior:smooth}
 body{background:radial-gradient(1200px 500px at 50% -120px,var(--glow) 0%,transparent 70%),var(--board);
   color:var(--ink);font-family:"Saira",system-ui,sans-serif;line-height:1.45;
   padding:20px 16px 80px;-webkit-font-smoothing:antialiased}
-.wrap{max-width:1180px;margin:0 auto;position:relative}
+.wrap{max-width:880px;margin:0 auto;position:relative}
 a{color:var(--amber-ink)}
 
 /* overlay de carregamento */
@@ -99,13 +99,27 @@ header .sub{color:var(--ink-dim);font-size:15px;margin-top:8px;max-width:64ch}
 .thirds .tchip i{font-style:normal;font-family:"Saira Condensed";font-weight:700;font-size:11px;color:var(--ink-dim)}
 .thirds .tnote{margin-top:10px;font-size:12.5px;color:var(--ink-dim)}
 
-/* ---------- Bracket (colunas por fase) ---------- */
-.bracket{display:flex;gap:16px;overflow-x:auto;padding-bottom:14px;-webkit-overflow-scrolling:touch}
-.col{flex:0 0 232px;display:flex;flex-direction:column;min-width:0}
-.col-head{font-family:"Saira Condensed";font-weight:800;font-size:14px;text-transform:uppercase;letter-spacing:.06em;
-  color:var(--amber-ink);padding:0 2px 8px;border-bottom:1px solid var(--line);position:sticky;top:0;
-  background:var(--board);z-index:1}
-.col-body{flex:1;display:flex;flex-direction:column;justify-content:space-around;gap:12px;padding-top:14px}
+/* ---------- Mata-mata em carrossel por fase ---------- */
+.mm{margin-top:2px}
+.mm-tabs{display:flex;gap:8px;overflow-x:auto;padding-bottom:14px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.mm-tabs::-webkit-scrollbar{display:none}
+.mm-tab{flex:none;cursor:pointer;font-family:"Saira Condensed";font-weight:700;font-size:13px;text-transform:uppercase;
+  letter-spacing:.04em;color:var(--ink-dim);background:var(--board-2);border:1px solid var(--line);border-radius:999px;
+  padding:8px 14px;display:inline-flex;align-items:center;gap:7px;transition:.15s;white-space:nowrap}
+.mm-tab:hover{border-color:var(--line-hi);color:var(--ink)}
+.mm-tab.active{color:var(--board);background:var(--amber);border-color:var(--amber)}
+.mm-tab-n{font-size:11px;opacity:.7}
+
+.mm-stage{position:relative}
+.mm-viewport{position:relative;overflow:hidden;transition:height .35s ease}
+.mm-track{position:relative}
+.mm-slide{position:absolute;top:0;left:0;width:100%;transition:transform .35s ease;will-change:transform}
+.mm-slide[aria-hidden="true"]{pointer-events:none}
+/* uma coluna vertical de PARES: os dois jogos cujos vencedores se enfrentam na fase
+   seguinte ficam juntos (espaço menor); entre pares, um respiro maior — dá pra ler
+   o chaveamento só pelo espaçamento, sem rótulo. */
+.mm-grid{display:flex;flex-direction:column;gap:30px}
+.mm-pair{display:flex;flex-direction:column;gap:10px}
 
 .tie{background:linear-gradient(180deg,var(--panel-hi),var(--board-2));border:1px solid var(--line);
   border-radius:var(--radius);overflow:hidden}
@@ -127,11 +141,6 @@ header .sub{color:var(--ink-dim);font-size:15px;margin-top:8px;max-width:64ch}
 .tie .row.win{background:color-mix(in srgb,var(--green) 9%,transparent)}
 .tie .row.out{opacity:.5}
 
-/* disputa de 3º lugar — cartão isolado abaixo da árvore */
-.bronze{margin-top:18px;max-width:232px}
-.bronze-head{font-family:"Saira Condensed";font-weight:800;font-size:13px;text-transform:uppercase;letter-spacing:.05em;
-  color:var(--ink-dim);margin-bottom:8px}
-
 /* bandeiras */
 img.flag{width:1.3em;height:auto;border-radius:2px;box-shadow:0 0 0 1px rgba(0,0,0,.3);flex:none}
 .flag-emoji{font-size:1.1em}
@@ -146,5 +155,4 @@ footer a:hover{text-decoration:underline}
 @media (max-width:760px){
   .theme-toggle{position:static;margin-bottom:14px}
   header{padding-top:0}
-  .col{flex-basis:200px}
 }
