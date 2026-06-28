@@ -781,6 +781,10 @@ function reveal(){ document.body.classList.add('ready'); }
 applyChannels(typeof TRANSMISSAO!=='undefined'?TRANSMISSAO:null);   // grade de transmissão (assets/transmissao.js)
 render();                          // monta a tabela (ainda escondida pelo overlay)
 loadJogosJson();                   // canais atualizados pelo cron (jogos.json) sobrescrevem quando disponível
-fetchLive().then(scheduleNext).finally(reveal);   // revela após carregar os placares
-fetchSeason();                     // ids e resultados dos demais dias (p/ estatísticas)
+// revela só DEPOIS dos placares de hoje (fetchLive) E da temporada inteira (fetchSeason) —
+// é o fetchSeason que carrega o chaveamento do mata-mata (confrontos reais da ESPN), então
+// sem esperar por ele a tela apareceria com os jogos 1º×3º ainda em "3º A/B/C/D/F".
+const _live=fetchLive().then(scheduleNext);   // placares de hoje + agenda do auto-refresh
+const _season=fetchSeason();                  // ids, resultados e chaveamento dos demais dias
+Promise.allSettled([_live,_season]).finally(reveal);
 setTimeout(reveal, 6000);          // fallback: nunca deixa a tela travada no "carregando"
