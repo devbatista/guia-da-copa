@@ -297,17 +297,16 @@ function koEspnFixtureFor(k,anchor){
   }
   return best;
 }
-/* times de um jogo do mata-mata: resolve pelos slots (grupos + propagação) e, quando
-   um slot ainda não fecha (ex.: melhor 3º), completa pelo confronto real da ESPN. */
+/* times de um jogo do mata-mata: resolve pelos slots (grupos + propagação) e, SÓ no slot
+   de melhor 3º ('3:...'), completa pelo confronto real da ESPN usando o 1º de grupo do
+   outro lado como ÂNCORA. Slots de vencedor/perdedor (W##/L##) ficam por conta da
+   propagação — casar por data sem âncora pegaria o confronto errado (ex.: um jogo da R32
+   no mesmo dia das Oitavas, que a FIFA agenda na virada de fase). */
 function koResolveTeams(k,ctx){
   let ht=koTeamForSlot(k.h,k,ctx), at=koTeamForSlot(k.a,k,ctx);
   if(ht&&at) return [ht,at];
-  const fx=koEspnFixtureFor(k,ht||at);
-  if(fx){
-    if(ht&&!at)      at=(fx.a===ht)?fx.b:(fx.b===ht?fx.a:at);
-    else if(at&&!ht) ht=(fx.a===at)?fx.b:(fx.b===at?fx.a:ht);
-    else { ht=fx.a; at=fx.b; }
-  }
+  if(ht&&!at&&k.a[0]==='3'){ const fx=koEspnFixtureFor(k,ht); if(fx) at=(fx.a===ht)?fx.b:(fx.b===ht?fx.a:at); }
+  else if(at&&!ht&&k.h[0]==='3'){ const fx=koEspnFixtureFor(k,at); if(fx) ht=(fx.a===at)?fx.b:(fx.b===at?fx.a:ht); }
   return [ht,at];
 }
 /* propaga vencedores/perdedores pela árvore até estabilizar */

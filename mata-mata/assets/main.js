@@ -88,19 +88,25 @@ function applyEvents(events){
     const pb=toPT(away.team&&(away.team.displayName||away.team.name));
     if(!pa||!pb) return;                       // jogo com seleção ainda indefinida (placeholder): ignora
     const st=(ev.status||c.status||{}), state=(st.type||{}).state;   // pre | in | post
-    if(state==='pre') return;
-    const isLive=state==='in';
-    if(isLive) live++;
+    const isPre=state==='pre', isLive=state==='in';
     const ga=+home.score||0, gb=+away.score||0;
     if(GROUP_OF[pa]&&GROUP_OF[pa]===GROUP_OF[pb]){
+      if(isPre) return;                                             // grupo ainda não jogado: nada a computar
+      if(isLive) live++;
       results[pairKey(pa,pb)]={a:pa,b:pb,ga,gb,live:isLive};        // fase de grupos
     }else if(GROUP_OF[pa]&&GROUP_OF[pb]){
-      let winner=null;                                              // mata-mata
-      if(home.winner===true) winner=pa; else if(away.winner===true) winner=pb;
-      else if(!isLive) winner=ga>gb?pa:gb>ga?pb:null;
+      // mata-mata — guarda o CONFRONTO (times + horário) MESMO no estado 'pre': a ESPN já
+      // resolve o chaveamento da Rodada de 32 quando os grupos fecham, e é disso que
+      // koFixtureFor precisa pra preencher os jogos 1º×melhor-3º com os times reais.
+      if(isLive) live++;
+      let winner=null;
+      if(!isPre){
+        if(home.winner===true) winner=pa; else if(away.winner===true) winner=pb;
+        else if(!isLive) winner=ga>gb?pa:gb>ga?pb:null;
+      }
       let pens=null;
       if(home.shootoutScore!=null&&away.shootoutScore!=null) pens=[+home.shootoutScore,+away.shootoutScore];
-      koResults[pairKey(pa,pb)]={a:pa,b:pb,ga,gb,winner,pens,live:isLive};
+      koResults[pairKey(pa,pb)]={a:pa,b:pb,ga,gb,winner,pens,live:isLive,pre:isPre,ts:Date.parse(ev.date||c.date||'')};
     }
   });
   return {live};
@@ -133,12 +139,6 @@ function standings(){
   });
   for(const g in tbl){ tbl[g].forEach(r=>r.sg=r.gp-r.gc); tbl[g].sort(cmp); }
   return tbl;
-}
-/* os 8 melhores 3º colocados (formato 2026): retorna as letras dos grupos classificados */
-function bestThirds(tbl){
-  const thirds=Object.keys(tbl).map(g=>({g,r:tbl[g][2]})).filter(x=>x.r&&x.r.j>0);
-  thirds.sort((x,y)=>cmp(x.r,y.r));
-  return thirds.slice(0,8).map(x=>x.g);
 }
 /* grupo encerrado: 6 jogos disputados e nenhum em andamento */
 function groupDone(g){
@@ -206,55 +206,59 @@ const PHASES=[
    usado só pra agrupá-los (espaço menor dentro do par, maior entre pares). */
 const NEXT={}; KNOCKOUT.forEach(m=>['h','a'].forEach(side=>{ const s=m[side]; if(s[0]==='W') NEXT[+s.slice(1)]=m.id; }));
 
-/* ------------------------------------------------------------
-   Alocação dos 8 melhores 3º (FIFA, Anexo C — 495 combinações).
-   Chave = letras dos grupos classificados em ordem alfabética.
-   Valor = qual grupo (3º) enfrenta cada vencedor de grupo.
-   As linhas abaixo são da tabela oficial e servem de semente/teste;
-   a combinação que realmente ocorrer (definida em 27/jun) deve ser
-   adicionada aqui — enquanto não estiver, os jogos 1º×3º mostram o
-   rótulo do conjunto elegível (ex.: "3º A/B/C/D/F").
-   ------------------------------------------------------------ */
-const TA_COLS=['1A','1B','1D','1E','1G','1I','1K','1L'];
-const THIRDS_ALLOCATION={};
-[
-  ['EFGHIJKL','E,J,I,F,H,G,L,K'],['DFGHIJKL','H,G,I,D,J,F,L,K'],['DEGHIJKL','E,J,I,D,H,G,L,K'],
-  ['DEFHIJKL','E,J,I,D,H,F,L,K'],['DEFGIJKL','E,G,I,D,J,F,L,K'],['DEFGHJKL','E,G,J,D,H,F,L,K'],
-  ['DEFGHIKL','E,G,I,D,H,F,L,K'],['DEFGHIJL','E,G,J,D,H,F,L,I'],['DEFGHIJK','E,G,J,D,H,F,I,K'],
-  ['CFGHIJKL','H,G,I,C,J,F,L,K'],['CEGHIJKL','E,J,I,C,H,G,L,K'],['CEFHIJKL','E,J,I,C,H,F,L,K'],
-  ['CEFGIJKL','E,G,I,C,J,F,L,K'],['CEFGHJKL','E,G,J,C,H,F,L,K'],['CEFGHIKL','E,G,I,C,H,F,L,K'],
-  ['CEFGHIJL','E,G,J,C,H,F,L,I'],['CEFGHIJK','E,G,J,C,H,F,I,K'],['CDGHIJKL','H,G,I,C,J,D,L,K'],
-  ['CDFHIJKL','C,J,I,D,H,F,L,K'],['CDFGIJKL','C,G,I,D,J,F,L,K'],
-].forEach(([k,v])=>{ const a=v.split(','); const o={}; TA_COLS.forEach((c,i)=>o[c]=a[i]); THIRDS_ALLOCATION[k]=o; });
+/* horário de referência de cada jogo (meio-dia BRT do dia) — usado p/ casar o confronto
+   com o evento da ESPN no koFixtureFor. dd/mm cobre junho e julho de 2026. */
+KNOCKOUT.forEach(m=>{ const [dd,mm]=m.d.split('/').map(Number);
+  m.ts=Date.parse(`2026-${String(mm).padStart(2,'0')}-${String(dd).padStart(2,'0')}T12:00:00-03:00`); });
 
 /* ============================================================
    Resolução: do estado da ESPN para os times de cada confronto
    ============================================================ */
 function buildContext(){
   const tbl=standings();
-  const done={}; let allDone=true;
-  for(const g in GROUPS){ done[g]=groupDone(g); if(!done[g]) allDone=false; }
-  let thirdAssign=null, thirdGroups=null;
-  if(allDone){
-    thirdGroups=bestThirds(tbl).slice().sort();           // 8 letras
-    if(thirdGroups.length===8) thirdAssign=THIRDS_ALLOCATION[thirdGroups.join('')]||null;
-  }
-  return {tbl,done,allDone,thirdGroups,thirdAssign,winnerOf:{},loserOf:{}};
+  const done={};
+  for(const g in GROUPS) done[g]=groupDone(g);
+  return {tbl,done,winnerOf:{},loserOf:{}};
 }
-/* nome do time de um slot, ou null se ainda indefinido */
+/* nome do time de um slot, ou null se ainda indefinido.
+   O melhor 3º (slot '3') NÃO é resolvido aqui: o pareamento depende da combinação
+   exata dos grupos classificados (495 possibilidades). Em vez de manter essa tabela,
+   pegamos o confronto real do chaveamento que a ESPN publica (ver tieTeams/koFixtureFor). */
 function teamForSlot(s,m,ctx){
   if(s[0]==='1'||s[0]==='2'){
     const g=s.slice(1); if(!ctx.done[g]) return null;
     return ctx.tbl[g][s[0]==='1'?0:1].name;
   }
-  if(s[0]==='3'){                                          // melhor 3º: depende do vencedor (lado mandante)
-    if(!ctx.thirdAssign) return null;
-    const g=ctx.thirdAssign[m.h]; if(!g) return null;
-    const row=ctx.tbl[g][2]; return row?row.name:null;
-  }
+  if(s[0]==='3') return null;                              // melhor 3º: resolvido pela ESPN
   if(s[0]==='W') return ctx.winnerOf[+s.slice(1)]||null;
   if(s[0]==='L') return ctx.loserOf[+s.slice(1)]||null;
   return null;
+}
+/* confronto de mata-mata que a ESPN já resolveu (times reais), casado por horário.
+   koResults só guarda jogos de mata-mata, então qualquer match aqui é um confronto válido.
+   Com um time âncora (slot 1º/2º já resolvido), exige que o par o contenha — desambigua. */
+function koFixtureFor(m,anchor){
+  let best=null,bestDh=Infinity;
+  for(const key in koResults){
+    const r=koResults[key];
+    if(!Number.isFinite(r.ts)||!Number.isFinite(m.ts)) continue;
+    const dh=Math.abs(r.ts-m.ts);
+    if(dh>18*3600*1000) continue;                          // janela: mesmo dia (descarta confrontos de outro dia)
+    if(anchor && r.a!==anchor && r.b!==anchor) continue;
+    if(dh<bestDh){ bestDh=dh; best=r; }
+  }
+  return best;
+}
+/* times de um confronto: resolve pelos slots e, SÓ no slot de melhor 3º ('3:...'),
+   completa pelo confronto real da ESPN usando o 1º de grupo do outro lado como ÂNCORA.
+   Slots de vencedor/perdedor (W##/L##) ficam por conta da propagação — casar por data
+   sem âncora pegaria o confronto errado (ex.: um jogo da R32 no mesmo dia das Oitavas). */
+function tieTeams(m,ctx){
+  let ht=teamForSlot(m.h,m,ctx), at=teamForSlot(m.a,m,ctx);
+  if(ht&&at) return [ht,at];
+  if(ht&&!at&&m.a[0]==='3'){ const fx=koFixtureFor(m,ht); if(fx) at=(fx.a===ht)?fx.b:(fx.b===ht?fx.a:at); }
+  else if(at&&!ht&&m.h[0]==='3'){ const fx=koFixtureFor(m,at); if(fx) ht=(fx.a===at)?fx.b:(fx.b===at?fx.a:ht); }
+  return [ht,at];
 }
 /* rótulo de um slot ainda não resolvido */
 function slotLabel(s,m,ctx){
@@ -272,7 +276,7 @@ function propagate(ctx){
     changed=false;
     for(const m of KNOCKOUT){
       if(ctx.winnerOf[m.id]) continue;
-      const ht=teamForSlot(m.h,m,ctx), at=teamForSlot(m.a,m,ctx);
+      const [ht,at]=tieTeams(m,ctx);
       if(!ht||!at) continue;
       const r=koResults[pairKey(ht,at)];
       if(r&&!r.live&&r.winner){
@@ -287,17 +291,15 @@ function propagate(ctx){
 /* ============================================================
    Render
    ============================================================ */
-function teamRow(slot,m,ctx,oppTeam){
-  const name=teamForSlot(slot,m,ctx);
+function teamRow(name,slot,m,ctx,other){
   if(!name) return {html:`<div class="row"><span class="nm lbl">${esc(slotLabel(slot,m,ctx))}</span></div>`,name:null};
   const disp=esc(ABBR[name]||name);
   const cls=name==='Brasil'?' br-name':'';
   /* placar do confronto, se houver */
   let sc='', rowcls='';
-  const other=oppTeam;
   if(other){
     const r=koResults[pairKey(name,other)];
-    if(r){
+    if(r&&!r.pre){                                          // confronto só marcado (pre): mostra o time, sem placar
       const g=r.a===name?r.ga:r.gb;
       let pens='';
       if(r.pens){ const p=r.a===name?r.pens[0]:r.pens[1]; pens=`<span class="pens">(${p})</span>`; }
@@ -308,10 +310,9 @@ function teamRow(slot,m,ctx,oppTeam){
   return {html:`<div class="row${rowcls}">${flag(name)}<span class="nm${cls}">${disp}</span>${sc}</div>`,name};
 }
 function tieCard(m,ctx){
-  const live=(()=>{ const ht=teamForSlot(m.h,m,ctx),at=teamForSlot(m.a,m,ctx);
-    if(ht&&at){ const r=koResults[pairKey(ht,at)]; return r&&r.live; } return false; })();
-  const ht=teamForSlot(m.h,m,ctx), at=teamForSlot(m.a,m,ctx);
-  const top=teamRow(m.h,m,ctx,at), bot=teamRow(m.a,m,ctx,ht);
+  const [ht,at]=tieTeams(m,ctx);
+  const live=(()=>{ if(ht&&at){ const r=koResults[pairKey(ht,at)]; return r&&r.live; } return false; })();
+  const top=teamRow(ht,m.h,m,ctx,at), bot=teamRow(at,m.a,m,ctx,ht);
   const tag=m.third?'3º lugar · ':'';
   return `<div class="tie${live?' live':''}">
     <div class="tie-meta">${tag}#${m.id} · ${m.d} · ${esc(m.v)}${live?' · <span class="lv">ao vivo</span>':''}</div>
@@ -386,18 +387,6 @@ function render(){
 
   if(mmActive<0) mmActive=defaultPhase(ctx);   // só na 1ª render; navegação do usuário é preservada
   mmApply();
-
-  /* painel dos 3º classificados */
-  const tp=$('thirds');
-  if(ctx.allDone && ctx.thirdGroups){
-    const chips=ctx.thirdGroups.map(g=>{ const t=ctx.tbl[g][2]; const n=t?t.name:null;
-      return n?`<span class="tchip">${flag(n)}<span>${esc(ABBR[n]||n)}</span><i>${g}</i></span>`:''; }).join('');
-    const note=ctx.thirdAssign?'':'<div class="tnote">O pareamento exato dos 3º com os vencedores será definido pela tabela oficial da FIFA.</div>';
-    tp.innerHTML=`<div class="thead">8 melhores terceiros classificados</div><div class="tchips">${chips}</div>${note}`;
-    tp.style.display='';
-  }else{
-    tp.style.display='none';
-  }
 }
 
 /* ============================================================
