@@ -280,6 +280,36 @@ function koSlotLabel(s){
   if(s[0]==='L') return 'Perdedor #'+s.slice(1);
   return '';
 }
+/* Confronto de mata-mata que a ESPN já resolveu (times reais), casado por horário.
+   A ESPN publica o chaveamento da Rodada de 32 assim que a fase de grupos acaba, então
+   é a FONTE DA VERDADE do confronto: não dependemos da nossa alocação de melhores 3ºs
+   (são 495 combinações possíveis — não cabe numa tabela fixa). koResults só guarda jogos
+   de mata-mata (os de grupo vão pra M), então qualquer match aqui é um confronto válido. */
+function koEspnFixtureFor(k,anchor){
+  let best=null,bestDh=Infinity;
+  for(const key in koResults){
+    const r=koResults[key];
+    if(!Number.isFinite(r.ts)) continue;
+    const dh=Math.abs(r.ts-k.ts);
+    if(dh>12*3600*1000) continue;                       // janela: descarta confrontos de outro dia
+    if(anchor && r.a!==anchor && r.b!==anchor) continue; // com um time âncora (slot 1º/2º já resolvido), exige que o par o contenha
+    if(dh<bestDh){ bestDh=dh; best=r; }
+  }
+  return best;
+}
+/* times de um jogo do mata-mata: resolve pelos slots (grupos + propagação) e, quando
+   um slot ainda não fecha (ex.: melhor 3º), completa pelo confronto real da ESPN. */
+function koResolveTeams(k,ctx){
+  let ht=koTeamForSlot(k.h,k,ctx), at=koTeamForSlot(k.a,k,ctx);
+  if(ht&&at) return [ht,at];
+  const fx=koEspnFixtureFor(k,ht||at);
+  if(fx){
+    if(ht&&!at)      at=(fx.a===ht)?fx.b:(fx.b===ht?fx.a:at);
+    else if(at&&!ht) ht=(fx.a===at)?fx.b:(fx.b===at?fx.a:ht);
+    else { ht=fx.a; at=fx.b; }
+  }
+  return [ht,at];
+}
 /* propaga vencedores/perdedores pela árvore até estabilizar */
 function koPropagate(ctx){
   let changed=true, guard=0;
@@ -287,7 +317,7 @@ function koPropagate(ctx){
     changed=false;
     for(const k of KO){
       if(ctx.winnerOf[k.id]) continue;
-      const ht=koTeamForSlot(k.h,k,ctx), at=koTeamForSlot(k.a,k,ctx);
+      const [ht,at]=koResolveTeams(k,ctx);
       if(!ht||!at) continue;
       const r=koResults[pairKey(ht,at)];
       if(r&&!r.live&&r.winner){ ctx.winnerOf[k.id]=r.winner; ctx.loserOf[k.id]=r.winner===ht?at:ht; changed=true; }
@@ -299,7 +329,7 @@ function koPropagate(ctx){
 function koMatches(){
   const ctx=koContext(); koPropagate(ctx);
   return KO.map(k=>{
-    const ht=koTeamForSlot(k.h,k,ctx), at=koTeamForSlot(k.a,k,ctx);
+    const [ht,at]=koResolveTeams(k,ctx);
     // canais: piso Cazé TV; quando o par resolvido aparece no jogos.json, sobe p/ a grade raspada
     const ch=(ht&&at&&koChByPair[pairKey(ht,at)])||KO_FLOOR;
     const o={ ko:true, id:k.id, phName:k.phName, third:!!k.third, v:k.v, di:k.di, min:k.min, t:k.t, ts:k.ts,
@@ -307,7 +337,7 @@ function koMatches(){
       isBr:ht==='Brasil'||at==='Brasil', open:ch.some(c=>c==='Globo'||c==='SBT'), cazeOnly:ch.length===1, ch,
       score:null, live:null, eid:null, pens:null };
     const r=(ht&&at)?koResults[pairKey(ht,at)]:null;
-    if(r){
+    if(r&&!r.pre){   // confronto só marcado (pre): mostra os times, mas ainda sem placar
       const ga=r.a===ht?r.ga:r.gb, gb=r.a===ht?r.gb:r.ga;
       if(r.live) o.live={a:ga,b:gb,clock:'',half:false}; else o.score=[ga,gb];
       if(r.pens) o.pens=r.a===ht?[r.pens[0],r.pens[1]]:[r.pens[1],r.pens[0]];
@@ -519,16 +549,20 @@ function applyEvents(events){
     const evTs=Date.parse(ev.date||c.date||'');
     if(m && Number.isFinite(evTs) && Math.abs(evTs-m.ts)>36*3600*1000) m=null;
     if(!m){
-      // confronto que não está na tabela de grupos = jogo de mata-mata: guarda p/ a propagação do chaveamento
-      if(state==='pre') return;
-      const isLive=state==='in', ga=+home.score||0, gb=+away.score||0;
+      // confronto fora da tabela de grupos = jogo de mata-mata. Guarda o CONFRONTO (times +
+      // horário) MESMO antes de começar (state 'pre'): a ESPN já resolve o chaveamento da
+      // Rodada de 32 quando os grupos acabam, e é disso que koEspnFixtureFor precisa pra
+      // exibir os times reais antes do apito (sem depender da nossa alocação de melhores 3ºs).
+      const isPre=state==='pre', isLive=state==='in', ga=+home.score||0, gb=+away.score||0;
       let winner=null;
-      if(home.winner===true) winner=ph; else if(away.winner===true) winner=pa;
-      else if(!isLive) winner=ga>gb?ph:gb>ga?pa:null;
+      if(!isPre){
+        if(home.winner===true) winner=ph; else if(away.winner===true) winner=pa;
+        else if(!isLive) winner=ga>gb?ph:gb>ga?pa:null;
+      }
       let pens=null;
       if(home.shootoutScore!=null&&away.shootoutScore!=null) pens=[+home.shootoutScore,+away.shootoutScore];
-      koResults[pairKey(ph,pa)]={a:ph,b:pa,ga,gb,winner,pens,live:isLive,eid:ev.id?String(ev.id):null};
-      if(isLive) live++; else fin++;
+      koResults[pairKey(ph,pa)]={a:ph,b:pa,ga,gb,winner,pens,live:isLive,pre:isPre,eid:ev.id?String(ev.id):null,ts:evTs};
+      if(isLive) live++; else if(!isPre) fin++;
       return;
     }
     if(ev.id){ m.eid=String(ev.id); byEid[m.eid]=m; }
@@ -717,7 +751,7 @@ document.addEventListener('click',e=>{
 });
 
 /* ---------- auto-refresh: 30s quando há jogo ao vivo, 5min caso contrário; pausa em aba oculta ---------- */
-function hasLive(){ return M.some(m=>m.live); }
+function hasLive(){ return M.some(m=>m.live) || Object.values(koResults).some(r=>r.live); }
 let liveTimer=null;
 function scheduleNext(){
   clearTimeout(liveTimer);
