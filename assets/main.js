@@ -343,6 +343,7 @@ function koMatches(){
       o.eid=r.eid||null;
     }
     o.q=((ht||o.hLabel)+' '+(at||o.aLabel)).toLowerCase();
+    if(o.eid) byEid[o.eid]=o;   // indexa p/ as estatísticas (loadStats/refreshOpenLive), igual aos jogos de grupo
     return o;
   });
 }
@@ -430,7 +431,9 @@ function koTeam(name,label,after){
 }
 function koMatchHTML(m){
   const st=statusOf(m);
-  const cls=['match','ko',m.isBr?'is-br':'',m.live?'islive':''].join(' ').replace(/\s+/g,' ').trim();
+  const playable=!!(m.live||m.score)&&!!m.eid;   // só ao vivo/encerrado tem estatísticas (mesma regra dos grupos)
+  const isOpen=playable&&openSet.has(m.eid);
+  const cls=['match','ko',m.isBr?'is-br':'',m.live?'islive':'',playable?'has-stats':'',isOpen?'expanded':''].join(' ').replace(/\s+/g,' ').trim();
   const top=`<div class="time${st.live?' islive':''}${st.half?' half':''}">${st.left}</div>`;
   const line=st.cls?`<span class="status ${st.cls}"><span class="d"></span>${st.label}</span>`:`<small>${st.label}</small>`;
   const penA=m.pens?`<span class="pens">(${m.pens[0]})</span>`:'';
@@ -438,13 +441,17 @@ function koMatchHTML(m){
   const mid=st.score
     ? `<span class="match-score"><span class="sc${st.live?' islive':''}">${st.score[0]}</span>${penA}<span class="vs">×</span><span class="sc${st.live?' islive':''}">${st.score[1]}</span>${penB}</span>`
     : `<span class="match-score"><span class="vs">×</span></span>`;
-  return `<div class="${cls}" data-q="${m.q}">
+  const toggle=playable?`<div class="stat-toggle">Detalhes da partida <span class="chev">▾</span></div>`:'';
+  const statbox=playable?`<div class="statbox" data-eid="${m.eid}"${isOpen?'':' hidden'}>${isOpen?(statCache[m.eid]||'<div class="stat-empty">Carregando estatísticas…</div>'):''}</div>`:'';
+  return `<div class="${cls}"${playable?` data-eid="${m.eid}"`:''} data-q="${m.q}">
     <div class="tcol">${top}${line}</div>
     <div class="body">
       <div class="teams">${koTeam(m.a,m.hLabel)} ${mid} ${koTeam(m.b,m.aLabel,true)}</div>
       <div class="meta"><span class="badge badge-ko">${esc(m.phName)}</span><span class="badge">Jogo ${m.id}</span><span>${esc(m.v)}</span></div>
       <div class="chans">${pills(m.ch)}</div>
+      ${toggle}
     </div>
+    ${statbox}
   </div>`;
 }
 /* despacha p/ o render certo conforme o tipo do jogo (grupo x mata-mata) */
