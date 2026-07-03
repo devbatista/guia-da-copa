@@ -338,7 +338,7 @@ function koMatches(){
     const r=(ht&&at)?koResults[pairKey(ht,at)]:null;
     if(r&&!r.pre){   // confronto só marcado (pre): mostra os times, mas ainda sem placar
       const ga=r.a===ht?r.ga:r.gb, gb=r.a===ht?r.gb:r.ga;
-      if(r.live) o.live={a:ga,b:gb,clock:'',half:false}; else o.score=[ga,gb];
+      if(r.live) o.live={a:ga,b:gb,clock:r.clock||'',half:!!r.half}; else o.score=[ga,gb];
       if(r.pens) o.pens=r.a===ht?[r.pens[0],r.pens[1]]:[r.pens[1],r.pens[0]];
       o.eid=r.eid||null;
     }
@@ -567,7 +567,8 @@ function applyEvents(events){
       }
       let pens=null;
       if(home.shootoutScore!=null&&away.shootoutScore!=null) pens=[+home.shootoutScore,+away.shootoutScore];
-      koResults[pairKey(ph,pa)]={a:ph,b:pa,ga,gb,winner,pens,live:isLive,pre:isPre,eid:ev.id?String(ev.id):null,ts:evTs};
+      const half=tp.name==='STATUS_HALFTIME'||/halftime/i.test(tp.description||'');
+      koResults[pairKey(ph,pa)]={a:ph,b:pa,ga,gb,winner,pens,live:isLive,pre:isPre,clock:st.displayClock||'',half,eid:ev.id?String(ev.id):null,ts:evTs};
       if(isLive) live++; else if(!isPre) fin++;
       return;
     }
