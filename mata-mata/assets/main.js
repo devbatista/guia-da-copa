@@ -333,6 +333,8 @@ function pairsHTML(ties,ctx){
 let mmActive=-1;   // fase ativa (-1 = ainda não definida; escolhida na 1ª render)
 /* fase decidida = todos os confrontos (fora o 3º lugar) já têm vencedor */
 function phaseDecided(ph,ctx){ return KNOCKOUT.filter(m=>m.ph===ph&&!m.third).every(m=>ctx.winnerOf[m.id]); }
+/* data do último jogo de uma fase (ts do meio-dia BRT do dia mais tarde) */
+function phaseEndTs(ph){ return Math.max(...KNOCKOUT.filter(m=>m.ph===ph&&!m.third).map(m=>m.ts)); }
 /* ordem dos slides: as 5 fases do bracket, com o 3º lugar logo ANTES da Final */
 function slideDefs(){
   const defs=[];
@@ -342,12 +344,23 @@ function slideDefs(){
   });
   return defs;
 }
-/* fase padrão ao abrir: a primeira ainda não decidida (= fase atual do torneio); se tudo decidido, a Final.
+/* fase padrão ao abrir: a fase atual do torneio, decidida automaticamente.
+   Usa o CALENDÁRIO (funciona mesmo sem dados ao vivo): a 1ª fase cujo último jogo
+   ainda não passou. E também avança pelos PLACARES: se uma fase já foi toda decidida,
+   pula pra próxima — o que vier depois entre calendário e resultado.
    O 3º lugar é pulado nessa escolha (só é acessado por aba/swipe). */
 function defaultPhase(ctx){
   const defs=slideDefs();
-  for(let i=0;i<defs.length;i++){ if(defs[i].third) continue; if(!phaseDecided(defs[i].ph,ctx)) return i; }
-  return defs.length-1;
+  const now=Date.now(), END=18*3600*1000;         // fim do dia do último jogo (mesma janela do koFixtureFor)
+  let byDate=-1, byResult=-1;
+  for(let i=0;i<defs.length;i++){
+    if(defs[i].third) continue;
+    if(byDate<0   && now<=phaseEndTs(defs[i].ph)+END)   byDate=i;      // 1ª fase ainda não encerrada pelo calendário
+    if(byResult<0 && !phaseDecided(defs[i].ph,ctx))     byResult=i;    // 1ª fase ainda não decidida pelos placares
+  }
+  if(byDate<0)   byDate=defs.length-1;             // calendário todo no passado → Final
+  if(byResult<0) byResult=defs.length-1;           // tudo decidido → Final
+  return Math.max(byDate,byResult);
 }
 function mmApply(){
   const track=$('mmTrack'); if(!track) return;
