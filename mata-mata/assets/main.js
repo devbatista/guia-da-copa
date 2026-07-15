@@ -406,7 +406,12 @@ function render(){
    Camada ao vivo (placares via API pública da ESPN)
    Range amplo: grupos (tabela) + mata-mata (propagação)
    ============================================================ */
-const API="https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates=20260611-20260719";
+/* A ESPN corta o scoreboard em 100 eventos por resposta e a Copa tem 104 jogos, então um
+   único range 11/jun–19/jul truncava nas quartas (12/jul) e as semis/3º/final ficavam de
+   fora — a propagação nunca recebia os placares do fim do mata-mata. Buscamos em duas
+   janelas (grupos: 72 jogos; mata-mata: 32 jogos), cada uma bem abaixo do limite. */
+const API="https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates=";
+const RANGES=['20260611-20260703','20260704-20260719'];
 function setSrc(state,text){
   const el=$('src'); el.classList.remove('ok','off');
   if(state) el.classList.add(state);
@@ -418,9 +423,11 @@ async function fetchScores(silent=false){
   const btn=$('refresh');
   if(!silent){ btn.disabled=true; btn.classList.add('spin'); setSrc('','Atualizando…'); }
   try{
-    const res=await fetch(API,{cache:'no-store'});
-    if(!res.ok) throw new Error('HTTP '+res.status);
-    const {live}=applyEvents((await res.json()).events);
+    const jsons=await Promise.all(RANGES.map(r=>
+      fetch(API+r,{cache:'no-store'}).then(res=>{ if(!res.ok) throw new Error('HTTP '+res.status); return res.json(); })
+    ));
+    let live=0;
+    for(const j of jsons) live+=applyEvents(j.events).live;
     hasLive=live>0;
     const hora=new Date().toLocaleTimeString('pt-BR',{timeZone:SP,hour:'2-digit',minute:'2-digit'});
     setSrc('ok', live?`${live} jogo(s) ao vivo · ${hora}`:`Atualizado · ${hora}`);

@@ -605,13 +605,20 @@ async function fetchLive(silent=false){
     if(!silent){ btn.disabled=false; btn.classList.remove('spin'); }
   }
 }
-/* uma vez no carregamento: pega ids e placares finais de todos os dias do torneio */
+/* uma vez no carregamento: pega ids e placares finais de todos os dias do torneio.
+   A ESPN corta o scoreboard em 100 eventos por resposta e a Copa tem 104 jogos, então
+   um único range 11/jun–19/jul truncava nas quartas (12/jul) e as semis/3º/final ficavam
+   de fora — placar do mata-mata nunca chegava. Buscamos em duas janelas: fase de grupos
+   (72 jogos) e mata-mata (32 jogos), cada uma bem abaixo do limite. */
+const SEASON_RANGES=['20260611-20260703','20260704-20260719'];
 async function fetchSeason(){
   try{
-    const res=await fetch(API+'?dates=20260611-20260719',{cache:'no-store'});
-    if(!res.ok) return;
-    applyEvents((await res.json()).events);
-    render();
+    const results=await Promise.all(SEASON_RANGES.map(r=>
+      fetch(API+'?dates='+r,{cache:'no-store'}).then(res=>res.ok?res.json():null).catch(()=>null)
+    ));
+    let any=false;
+    for(const j of results){ if(j&&j.events){ applyEvents(j.events); any=true; } }
+    if(any) render();
   }catch(e){ console.warn('Histórico indisponível:',e.message); }
 }
 
