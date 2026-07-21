@@ -803,3 +803,49 @@ const _live=fetchLive().then(scheduleNext);   // placares de hoje + agenda do au
 const _season=fetchSeason();                  // ids, resultados e chaveamento dos demais dias
 Promise.allSettled([_live,_season]).finally(reveal);
 setTimeout(reveal, 6000);          // fallback: nunca deixa a tela travada no "carregando"
+
+/* ---------- Pop-up de agradecimento (fim da Copa 2026) ---------- */
+(function(){
+  const ov=document.getElementById('thanksOverlay');
+  if(!ov) return;
+  const card=ov.querySelector('.thanks-card');
+  let lastFocus=null;
+
+  function open(){
+    lastFocus=document.activeElement;
+    ov.hidden=false;
+    requestAnimationFrame(()=>ov.classList.add('show'));
+    document.body.style.overflow='hidden';
+    (ov.querySelector('#thanksClose')||card).focus();
+    document.addEventListener('keydown',onKey);
+  }
+  function close(){
+    ov.classList.remove('show');
+    document.body.style.overflow='';
+    document.removeEventListener('keydown',onKey);
+    setTimeout(()=>{ov.hidden=true;},280);
+    if(lastFocus&&lastFocus.focus) lastFocus.focus();
+  }
+  function onKey(e){
+    if(e.key==='Escape'){ close(); return; }
+    if(e.key==='Tab'){                       // mantém o foco dentro do pop-up
+      const f=ov.querySelectorAll('a[href],button');
+      if(!f.length) return;
+      const first=f[0], last=f[f.length-1];
+      if(e.shiftKey && document.activeElement===first){ e.preventDefault(); last.focus(); }
+      else if(!e.shiftKey && document.activeElement===last){ e.preventDefault(); first.focus(); }
+    }
+  }
+  ov.querySelector('#thanksClose').addEventListener('click',close);
+  ov.querySelector('#thanksCta').addEventListener('click',close);
+  ov.addEventListener('click',e=>{ if(e.target===ov) close(); });   // clique fora fecha
+
+  // abre em toda visita, logo após o site aparecer (não briga com o loader)
+  function boot(){ setTimeout(open,700); }
+  if(document.body.classList.contains('ready')) boot();
+  else{
+    const obs=new MutationObserver(()=>{ if(document.body.classList.contains('ready')){ obs.disconnect(); boot(); } });
+    obs.observe(document.body,{attributes:true,attributeFilter:['class']});
+    setTimeout(()=>{ obs.disconnect(); boot(); },6500);   // fallback
+  }
+})();

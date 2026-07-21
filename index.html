@@ -61,7 +61,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700;800&family=Saira:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="assets/style.css?v=3">
+    <link rel="stylesheet" href="assets/style.css?v=4">
 
     <!-- Dados estruturados (Schema.org) -->
     <script type="application/ld+json">
@@ -164,7 +164,48 @@
       </footer>
     </div>
 
+    <!-- Pop-up de agradecimento (fim da Copa 2026) -->
+    <div id="thanksOverlay" class="thanks-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="thanksTitle" aria-describedby="thanksMsg">
+      <div class="thanks-card" role="document">
+        <button class="thanks-close" id="thanksClose" aria-label="Fechar" title="Fechar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+        <div class="thanks-eyebrow">Fim da Copa 2026 · 🏆</div>
+        <h2 id="thanksTitle" class="thanks-title">Obrigado por assistir a Copa com a gente!</h2>
+        <p id="thanksMsg" class="thanks-msg">
+          A Copa do Mundo 2026 chegou ao fim e este guia acompanhou você em cada jogo.
+          Muito obrigado a todos que acessaram — foi uma honra fazer parte da sua torcida.
+          Até a próxima! ⚽
+        </p>
+
+        <div class="thanks-links">
+          <a class="thanks-link primary" href="https://rbatista.dev" target="_blank" rel="noopener">
+            <span class="tl-ic" aria-hidden="true">💼</span>
+            <span class="tl-txt"><b>Portfólio &amp; projetos</b></span>
+          </a>
+          <a class="thanks-link" href="https://www.devbatista.com.br/" target="_blank" rel="noopener">
+            <span class="tl-ic" aria-hidden="true">🚀</span>
+            <span class="tl-txt"><b>DevBatista</b></span>
+          </a>
+          <a class="thanks-link wa" href="https://wa.me/5511986819042" target="_blank" rel="noopener">
+            <span class="tl-ic" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38a9.86 9.86 0 0 0 4.78 1.22h.01c5.46 0 9.9-4.45 9.9-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm5.8 14.13c-.25.7-1.44 1.33-1.99 1.38-.51.05-1.16.07-1.87-.12-.43-.14-.99-.32-1.7-.63-2.99-1.29-4.94-4.3-5.09-4.5-.15-.2-1.22-1.62-1.22-3.1 0-1.47.77-2.19 1.05-2.49.27-.3.6-.37.8-.37.2 0 .4 0 .57.01.18.01.43-.07.67.51.25.6.85 2.07.92 2.22.07.15.12.32.02.52-.1.2-.15.32-.3.5-.15.17-.31.39-.44.52-.15.15-.3.31-.13.6.17.3.76 1.25 1.63 2.02 1.12 1 2.07 1.31 2.37 1.46.3.15.47.12.65-.07.17-.2.75-.87.95-1.17.2-.3.4-.25.67-.15.27.1 1.71.8 2.01.95.3.15.5.22.57.35.07.12.07.72-.18 1.42z"/></svg>
+            </span>
+            <span class="tl-txt"><b>Fale comigo</b></span>
+          </a>
+          <a class="thanks-link ig" href="https://instagram.com/_devbatista" target="_blank" rel="noopener">
+            <span class="tl-ic" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="2.5" width="19" height="19" rx="5.5"/><circle cx="12" cy="12" r="4.2"/><circle cx="17.4" cy="6.6" r="1.1" fill="currentColor" stroke="none"/></svg>
+            </span>
+            <span class="tl-txt"><b>Instagram</b></span>
+          </a>
+        </div>
+
+        <button class="thanks-cta" id="thanksCta">Fechar e voltar ao guia</button>
+      </div>
+    </div>
+
     <script src="assets/transmissao.js?v=2"></script>
-    <script src="assets/main.js?v=2"></script>
+    <script src="assets/main.js?v=3"></script>
   </body>
 </html>
